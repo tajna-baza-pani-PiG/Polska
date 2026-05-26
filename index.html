@@ -35,9 +35,21 @@
         .dot { width:12px; height:12px; border-radius:3px; flex-shrink:0; border:1px solid rgba(0,0,0,.15); }
         .line-sym { width:22px; height:4px; border-radius:2px; flex-shrink:0; }
         #status-bar { margin-top:8px; padding:6px 12px; border-radius:8px; font-size:12px; color:#555; background:#f8f9fb; display:none; }
-        /* Ukryj WSZYSTKIE tooltips Leafleta i natywne title SVG */
-        .leaflet-tooltip { display:none !important; visibility:hidden !important; }
-        #map svg title { display:none; }
+        /* ── Tooltips: całkowite ukrycie ── */
+        .leaflet-tooltip { display:none !important; }
+        /* ── Hover: nadpisz Leaflet .leaflet-interactive ── */
+        /* Leaflet zmienia fill-opacity na hover – blokujemy to */
+        #map path.leaflet-interactive:hover,
+        #map path.kraina-poly:hover {
+            fill-opacity: .45 !important;
+            stroke-opacity: .85 !important;
+            cursor: pointer;
+        }
+        /* Wymuś stałe wartości opacity – żaden hover nie zmieni wyglądu */
+        #map path.kraina-poly {
+            fill-opacity: .45 !important;
+            stroke-opacity: .85 !important;
+        }
     </style>
 </head>
 <body>
@@ -84,25 +96,7 @@ const KRAINY_META = [
 ];
 const COLOR_BY_NAME = Object.fromEntries(KRAINY_META.map(k => [k.name, k.color]));
 
-// Województwo (JPT_NAZWA_ lowercase) → kraina
-const WOJ_KRAINA = {
-  "zachodniopomorskie":  "Pojezierze Pomorskie",
-  "pomorskie":           "Pojezierze Pomorskie",
-  "warmińsko-mazurskie": "Pojezierze Mazurskie",
-  "podlaskie":           "Podlasie",
-  "wielkopolskie":       "Nizina Wielkopolska",
-  "kujawsko-pomorskie":  "Nizina Wielkopolska",
-  "łódzkie":             "Nizina Mazowiecka",
-  "mazowieckie":         "Nizina Mazowiecka",
-  "dolnośląskie":        "Nizina Śląska",
-  "opolskie":            "Nizina Śląska",
-  "lubuskie":            "Nizina Śląska",
-  "śląskie":             "Wyżyna Krakowsko-Częstochowska",
-  "małopolskie":         "Wyżyna Małopolska",
-  "świętokrzyskie":      "Góry Świętokrzyskie",
-  "lubelskie":           "Wyżyna Małopolska",
-  "podkarpackie":        "Wyżyna Małopolska",
-};
+
 
 // Fallback – uproszczone poligony gdy GeoJSON niedostępny
 const FALLBACK_COORDS = {
@@ -161,7 +155,6 @@ let geoLayers = [];
 let quiz = [], score = 0, current = 0, answered = false;
 let autoAdvanceTimeout = null;
 let currentMode = 'krainy';
-let wojGeoJSON = null; // cache pobranych danych
 
 // ════════════════════════════════════════
 // INICJALIZACJA MAPY
@@ -191,18 +184,28 @@ function makeGeoLayer(features, color, krainaName) {
     const layer = L.geoJSON(
         { type:'FeatureCollection', features },
         {
-            style: { color:'#1a2e4a', weight:1.8, opacity:.85, fillColor:color, fillOpacity:.45 },
+            style: {
+                color:'#1a2e4a', weight:1.8, opacity:.85,
+                fillColor:color, fillOpacity:.45,
+                className:'kraina-poly'   // własna klasa – brak domyślnego hover Leafleta
+            },
             onEachFeature: (feature, sublayer) => {
-                // Usuń <title> z SVG zaraz po dodaniu do mapy
+                const BASE_STYLE = {
+                    color:'#1a2e4a', weight:1.8, opacity:.85,
+                    fillColor:color, fillOpacity:.45
+                };
                 sublayer.on('add', () => {
                     const el = sublayer.getElement ? sublayer.getElement() : null;
                     if (el) {
                         el.querySelectorAll('title').forEach(t => t.remove());
-                        el.removeAttribute('title');
+                        // Usuń title z każdego child elementu SVG (Leaflet wstawia title do path)
+                        el.querySelectorAll('*').forEach(n => n.removeAttribute('title'));
                     }
-                    // Też przeszukaj cały kontener mapy
                     document.querySelectorAll('#map title').forEach(t => t.remove());
                 });
+                // Zablokuj hover Leafleta – natychmiast przywracaj styl bazowy
+                sublayer.on('mouseover', () => sublayer.setStyle(BASE_STYLE));
+                sublayer.on('mouseout',  () => sublayer.setStyle(BASE_STYLE));
                 sublayer.on('click', e => {
                     L.DomEvent.stopPropagation(e);
                     handleAnswer(krainaName, e.latlng);
@@ -219,24 +222,7 @@ function makeGeoLayer(features, color, krainaName) {
     return layer;
 }
 
-function renderKrainyFromGeoJSON(gj) {
-    // Grupuj features po krainie
-    const groups = {};
-    (gj.features || []).forEach(f => {
-        const p = f.properties || {};
-        const raw = (p.JPT_NAZWA_ || p.name || p.NAME_1 || p.VARNAME_1 || p.admin_name || '').toLowerCase().trim();
-        const kraina = WOJ_KRAINA[raw];
-        if (!kraina) return;
-        if (!groups[kraina]) groups[kraina] = [];
-        groups[kraina].push(f);
-    });
-    clearGeoLayers();
-    Object.entries(groups).forEach(([kraina, features]) => {
-        makeGeoLayer(features, COLOR_BY_NAME[kraina] || '#607d8b', kraina);
-    });
-}
-
-function renderKrainyFallback() {
+function renderKrainy() {
     clearGeoLayers();
     Object.entries(FALLBACK_COORDS).forEach(([name, latLngs]) => {
         const ring = latLngs.map(c => [c[1], c[0]]); // [lat,lng]→[lng,lat]
@@ -247,33 +233,6 @@ function renderKrainyFallback() {
             name
         );
     });
-}
-
-async function renderKrainy() {
-    // Spróbuj pobrać prawdziwe dane – jsdelivr (CDN z CORS dla GitHub)
-    if (!wojGeoJSON) {
-        const urls = [
-            'https://cdn.jsdelivr.net/gh/waszkiewiczja/GeoJSON-Polska-Wojewodztwa-Powiaty-Gminy@main/wojewodztwa.geojson',
-            'https://cdn.jsdelivr.net/gh/andilabs/polska-wojewodztwa-geojson@master/polska-wojewodztwa.geojson',
-            'https://cdn.jsdelivr.net/gh/ppatrzyk/polska-geojson@master/wojewodztwa/wojewodztwa-min.geojson',
-        ];
-        for (const url of urls) {
-            try {
-                const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
-                if (r.ok) {
-                    wojGeoJSON = await r.json();
-                    setStatus('✔ Prawdziwe granice województw załadowane', '#1b7c3f');
-                    break;
-                }
-            } catch { /* następny URL */ }
-        }
-    }
-    if (wojGeoJSON) {
-        renderKrainyFromGeoJSON(wojGeoJSON);
-    } else {
-        renderKrainyFallback();
-        setStatus('ℹ Używam uproszczonych granic (brak połączenia z serwerem GIS)', '#888');
-    }
 }
 
 function renderOthers() {
@@ -358,8 +317,9 @@ function advanceQuestion() {
         setMode(currentMode);
         return;
     }
-    if (currentMode === 'krainy') renderKrainy().then(showQuestion);
-    else { renderOthers(); showQuestion(); }
+    if (currentMode === 'krainy') renderKrainy();
+    else renderOthers();
+    showQuestion();
 }
 
 function showQuestion() {
@@ -392,7 +352,7 @@ async function setMode(mode) {
         document.getElementById('next').style.display = 'block';
         updateLegend();
         showQuestion();
-        await renderKrainy();
+        renderKrainy();
     } else {
         renderOthers();
         quiz = OTHERS.map(d => d.name);
