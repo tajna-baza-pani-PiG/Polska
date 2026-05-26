@@ -14,11 +14,7 @@
         #header { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
         #header h1 { font-family:'Merriweather',serif; font-size:19px; margin:0; color:#1a2e4a; }
         .mode-buttons { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
-        .mode-buttons button {
-            padding:8px 18px; font-size:14px; font-family:'Lato',sans-serif;
-            font-weight:700; border:2px solid #c5cfe0; border-radius:20px;
-            cursor:pointer; background:#fff; color:#4a5568; transition:all .15s;
-        }
+        .mode-buttons button { padding:8px 18px; font-size:14px; font-family:'Lato',sans-serif; font-weight:700; border:2px solid #c5cfe0; border-radius:20px; cursor:pointer; background:#fff; color:#4a5568; transition:all .15s; }
         .mode-buttons button:hover { border-color:#2d89ef; color:#2d89ef; }
         .mode-buttons button.active { background:#2d89ef; border-color:#2d89ef; color:#fff; box-shadow:0 2px 8px rgba(45,137,239,.35); }
         #quiz-panel { background:#fff; border-radius:12px; padding:11px 16px; margin-bottom:10px; box-shadow:0 2px 8px rgba(0,0,0,0.07); display:flex; flex-direction:column; gap:4px; }
@@ -38,7 +34,8 @@
         .leg-item { display:flex; align-items:center; gap:5px; }
         .dot { width:12px; height:12px; border-radius:3px; flex-shrink:0; border:1px solid rgba(0,0,0,0.15); }
         .line-sym { width:22px; height:4px; border-radius:2px; flex-shrink:0; }
-        #info-bar { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); background:rgba(20,30,50,0.85); color:#fff; padding:8px 20px; border-radius:24px; font-size:13px; z-index:500; pointer-events:none; white-space:nowrap; display:none; box-shadow:0 2px 8px rgba(0,0,0,0.3); }
+        #geojson-box { margin-top:10px; padding:10px 14px; background:#fff; border-radius:10px; font-size:13px; color:#4a5568; box-shadow:0 1px 4px rgba(0,0,0,0.06); }
+        #geojson-box a { color:#2d89ef; }
         .leaflet-tooltip.obj-tip { background:rgba(20,30,50,0.88); color:#fff; border:none; border-radius:6px; font-family:'Lato',sans-serif; font-size:13px; font-weight:700; padding:4px 10px; box-shadow:0 2px 6px rgba(0,0,0,.3); pointer-events:none; }
         .leaflet-tooltip.obj-tip::before { display:none; }
     </style>
@@ -59,202 +56,93 @@
         <div id="feedback"></div>
         <div id="score"></div>
     </div>
-    <div id="map"><div id="info-bar"></div></div>
+    <div id="map"></div>
     <button id="next">Następne pytanie ▶</button>
     <div id="legend"></div>
-    <div id="geojson-upload" style="margin-top:10px;padding:10px 14px;background:#fff;border-radius:10px;font-size:13px;color:#4a5568;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
-        <b>🗂 Lepsza mapa krain:</b> Pobierz <a href="https://simplemaps.com/gis/country/pl" target="_blank">GeoJSON województw z simplemaps.com</a> (bezpłatny), 
-        a następnie wgraj plik: <input type="file" id="geojson-file" accept=".json,.geojson" style="margin-left:6px;font-size:12px">
+    <div id="geojson-box">
+        <b>🗂 Dokładniejsza mapa:</b>
+        Pobierz <a href="https://simplemaps.com/gis/country/pl" target="_blank">GeoJSON województw (simplemaps.com → Download GeoJSON)</a>
+        i wgraj tutaj: <input type="file" id="geojson-file" accept=".json,.geojson" style="margin-left:6px;font-size:12px">
     </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ═══════════════════════════════════════════════════════════════════════════
-// KRAINY – poligony wbudowane (przybliżone) LUB z prawdziwego GeoJSON województw
-// Aby uzyskać dokładną mapę: pobierz GeoJSON województw (np. z simplemaps.com/gis/country/pl)
-// i wgraj plik poniżej przyciskiem "Wgraj GeoJSON województw"
-// ═══════════════════════════════════════════════════════════════════════════
-
-// Mapowanie województwo → kraina (wg tradycyjnego podziału geograficznego kl. 7)
-// Każde województwo przypisane do dominującej krainy
-// Kilka województw podzielono na części przez dodatkowe poligony
-
+// ════════════════════════════════════════════════════════════════════════
+// DANE – krainy geograficzne (przybliżone poligony, klikalne)
+// ════════════════════════════════════════════════════════════════════════
 const KRAINY_DATA = [
-  {
-    name: "Pobrzeże Szczecińskie",
-    color: "#0d47a1",
-    // Pas nadmorski zach: Szczecin, Wolin, wybrzeże do Kołobrzegu
-    coords: [[53.33,14.07],[53.62,14.07],[54.12,14.13],[54.37,14.28],[54.55,14.55],[54.60,15.12],[54.45,15.50],[54.17,15.53],[53.83,15.43],[53.57,15.23],[53.37,14.93],[53.28,14.45]]
-  },
-  {
-    name: "Pobrzeże Koszalińskie",
-    color: "#1565c0",
-    // Wybrzeże środkowe: Kołobrzeg – Ustka
-    coords: [[54.17,15.53],[54.45,15.50],[54.60,15.12],[54.72,15.57],[54.78,16.18],[54.82,16.88],[54.68,17.17],[54.42,17.22],[54.10,17.07],[53.90,16.68],[53.88,16.13],[53.95,15.67]]
-  },
-  {
-    name: "Pobrzeże Słowińskie",
-    color: "#1976d2",
-    // Wybrzeże: Ustka – Gdynia, jeziora przybrzeżne
-    coords: [[54.42,17.22],[54.68,17.17],[54.82,16.88],[54.88,17.35],[54.92,17.90],[54.90,18.30],[54.72,18.53],[54.47,18.57],[54.22,18.40],[54.07,18.03],[54.10,17.57],[54.20,17.27]]
-  },
-  {
-    name: "Pobrzeże Gdańskie",
-    color: "#1e88e5",
-    // Trójmiasto, Żuławy, Mierzeja Wiślana, Wys. Elbląska
-    coords: [[54.22,18.40],[54.47,18.57],[54.72,18.53],[54.87,18.30],[54.85,18.78],[54.87,19.57],[54.62,19.87],[54.27,19.92],[53.93,19.70],[53.83,19.13],[53.90,18.70],[54.07,18.40]]
-  },
-  {
-    name: "Pojezierze Pomorskie",
-    color: "#2e7d32",
-    // Bory Tucholskie, Pojezierze Krajeńskie, Chojnickie, Kaszubskie
-    coords: [[53.37,14.93],[53.57,15.23],[53.83,15.43],[53.95,15.67],[53.88,16.13],[53.90,16.68],[54.10,17.07],[54.20,17.27],[54.10,17.57],[54.07,18.03],[53.83,18.37],[53.57,18.40],[53.32,18.13],[53.07,17.70],[52.82,17.23],[52.63,16.63],[52.73,16.13],[52.92,15.73],[53.12,15.40],[53.23,15.12]]
-  },
-  {
-    name: "Pojezierze Mazurskie",
-    color: "#388e3c",
-    // Kraina Wielkich Jezior, Olsztyn – Suwałki – Augustów
-    coords: [[53.83,19.13],[53.93,19.70],[54.27,19.92],[54.62,19.87],[54.87,19.57],[54.80,20.40],[54.70,21.13],[54.43,21.63],[54.10,22.07],[53.70,22.43],[53.37,22.43],[53.12,22.07],[52.93,21.32],[52.97,20.43],[53.17,19.83],[53.40,19.43],[53.57,18.87],[53.83,18.70]]
-  },
-  {
-    name: "Nizina Wielkopolska",
-    color: "#795548",
-    // Dorzecze środkowej Warty: Poznań, Kalisz, Konin
-    coords: [[52.63,16.63],[52.82,17.23],[53.07,17.70],[53.32,18.13],[53.57,18.40],[53.40,19.43],[53.17,19.83],[52.97,20.43],[52.93,21.32],[52.48,21.13],[52.18,20.67],[51.90,20.07],[51.62,19.40],[51.50,18.60],[51.53,18.00],[51.73,17.43],[51.97,16.97],[52.23,16.70],[52.43,16.47]]
-  },
-  {
-    name: "Nizina Mazowiecka",
-    color: "#8d6e63",
-    // Równina Mazowiecka: Warszawa, Płock, doliny Wisły i Narwi
-    coords: [[52.93,21.32],[53.12,22.07],[53.37,22.43],[53.43,22.90],[53.20,23.07],[52.83,23.02],[52.43,22.57],[52.07,22.20],[51.73,21.73],[51.57,21.20],[51.90,20.07],[52.18,20.67],[52.48,21.13]]
-  },
-  {
-    name: "Nizina Śląska",
-    color: "#6d4c41",
-    // Dolina Odry: Wrocław, Opole, Legnica
-    coords: [[52.43,16.47],[52.23,16.70],[51.97,16.97],[51.73,17.43],[51.53,18.00],[51.50,18.60],[51.30,18.53],[51.00,18.37],[50.63,18.07],[50.30,17.73],[50.07,17.43],[50.03,17.10],[50.20,16.83],[50.43,16.43],[50.73,15.97],[51.10,15.63],[51.43,15.43],[51.73,15.60],[52.07,16.03],[52.33,16.30]]
-  },
-  {
-    name: "Podlasie",
-    color: "#4e342e",
-    // Dolina Narwi i Bugu: Białystok, Łomża
-    coords: [[52.43,22.57],[52.83,23.02],[53.20,23.07],[53.43,22.90],[53.70,22.43],[54.10,22.07],[54.17,22.73],[53.87,23.17],[53.43,23.50],[52.97,23.67],[52.50,23.63],[51.97,23.47],[51.57,23.07],[51.50,22.57],[51.73,21.73],[52.07,22.20]]
-  },
-  {
-    name: "Wyżyna Krakowsko-Częstochowska",
-    color: "#e64a19",
-    // Jura: Częstochowa – Kraków, wapienne ostańce
-    coords: [[51.30,18.53],[51.50,18.60],[51.40,19.20],[51.13,19.50],[50.83,19.43],[50.53,19.23],[50.23,19.00],[50.03,18.73],[49.97,18.43],[50.07,18.20],[50.23,17.97],[50.43,17.83],[50.63,18.07],[51.00,18.37]]
-  },
-  {
-    name: "Wyżyna Małopolska",
-    color: "#f4511e",
-    // Wyżyna Kielecka + Sandomierska: Kielce, Sandomierz, Lublin
-    coords: [[51.40,19.20],[51.50,18.60],[51.62,19.40],[51.90,20.07],[51.57,21.20],[51.33,21.67],[51.07,21.73],[50.73,21.60],[50.43,21.30],[50.20,20.93],[49.93,20.53],[49.83,20.13],[49.97,19.73],[50.20,19.50],[50.53,19.23],[50.83,19.43],[51.13,19.50]]
-  },
-  {
-    name: "Góry Świętokrzyskie",
-    color: "#b71c1c",
-    // Pasmo Łysogór: Kielce – Skarżysko – Starachowice
-    coords: [[51.13,19.50],[50.83,19.43],[50.63,19.80],[50.53,20.30],[50.63,20.73],[50.90,20.90],[51.20,20.53],[51.27,20.07]]
-  }
+  { name:"Pobrzeże Szczecińskie",          color:"#0d47a1",
+    coords:[[53.33,14.07],[53.62,14.07],[54.12,14.13],[54.37,14.28],[54.55,14.55],[54.60,15.12],[54.45,15.50],[54.17,15.53],[53.83,15.43],[53.57,15.23],[53.37,14.93],[53.28,14.45]] },
+  { name:"Pobrzeże Koszalińskie",          color:"#1565c0",
+    coords:[[54.17,15.53],[54.45,15.50],[54.60,15.12],[54.72,15.57],[54.78,16.18],[54.82,16.88],[54.68,17.17],[54.42,17.22],[54.10,17.07],[53.90,16.68],[53.88,16.13],[53.95,15.67]] },
+  { name:"Pobrzeże Słowińskie",            color:"#1976d2",
+    coords:[[54.42,17.22],[54.68,17.17],[54.82,16.88],[54.88,17.35],[54.92,17.90],[54.90,18.30],[54.72,18.53],[54.47,18.57],[54.22,18.40],[54.07,18.03],[54.10,17.57],[54.20,17.27]] },
+  { name:"Pobrzeże Gdańskie",              color:"#1e88e5",
+    coords:[[54.22,18.40],[54.47,18.57],[54.72,18.53],[54.87,18.30],[54.85,18.78],[54.87,19.57],[54.62,19.87],[54.27,19.92],[53.93,19.70],[53.83,19.13],[53.90,18.70],[54.07,18.40]] },
+  { name:"Pojezierze Pomorskie",           color:"#2e7d32",
+    coords:[[53.37,14.93],[53.57,15.23],[53.83,15.43],[53.95,15.67],[53.88,16.13],[53.90,16.68],[54.10,17.07],[54.20,17.27],[54.10,17.57],[54.07,18.03],[53.83,18.37],[53.57,18.40],[53.32,18.13],[53.07,17.70],[52.82,17.23],[52.63,16.63],[52.73,16.13],[52.92,15.73],[53.12,15.40],[53.23,15.12]] },
+  { name:"Pojezierze Mazurskie",           color:"#388e3c",
+    coords:[[53.83,19.13],[53.93,19.70],[54.27,19.92],[54.62,19.87],[54.87,19.57],[54.80,20.40],[54.70,21.13],[54.43,21.63],[54.10,22.07],[53.70,22.43],[53.37,22.43],[53.12,22.07],[52.93,21.32],[52.97,20.43],[53.17,19.83],[53.40,19.43],[53.57,18.87],[53.83,18.70]] },
+  { name:"Nizina Wielkopolska",            color:"#795548",
+    coords:[[52.63,16.63],[52.82,17.23],[53.07,17.70],[53.32,18.13],[53.57,18.40],[53.40,19.43],[53.17,19.83],[52.97,20.43],[52.93,21.32],[52.48,21.13],[52.18,20.67],[51.90,20.07],[51.62,19.40],[51.50,18.60],[51.53,18.00],[51.73,17.43],[51.97,16.97],[52.23,16.70],[52.43,16.47]] },
+  { name:"Nizina Mazowiecka",              color:"#8d6e63",
+    coords:[[52.93,21.32],[53.12,22.07],[53.37,22.43],[53.43,22.90],[53.20,23.07],[52.83,23.02],[52.43,22.57],[52.07,22.20],[51.73,21.73],[51.57,21.20],[51.90,20.07],[52.18,20.67],[52.48,21.13]] },
+  { name:"Nizina Śląska",                  color:"#6d4c41",
+    coords:[[52.43,16.47],[52.23,16.70],[51.97,16.97],[51.73,17.43],[51.53,18.00],[51.50,18.60],[51.30,18.53],[51.00,18.37],[50.63,18.07],[50.30,17.73],[50.07,17.43],[50.03,17.10],[50.20,16.83],[50.43,16.43],[50.73,15.97],[51.10,15.63],[51.43,15.43],[51.73,15.60],[52.07,16.03],[52.33,16.30]] },
+  { name:"Podlasie",                       color:"#4e342e",
+    coords:[[52.43,22.57],[52.83,23.02],[53.20,23.07],[53.43,22.90],[53.70,22.43],[54.10,22.07],[54.17,22.73],[53.87,23.17],[53.43,23.50],[52.97,23.67],[52.50,23.63],[51.97,23.47],[51.57,23.07],[51.50,22.57],[51.73,21.73],[52.07,22.20]] },
+  { name:"Wyżyna Krakowsko-Częstochowska", color:"#e64a19",
+    coords:[[51.30,18.53],[51.50,18.60],[51.40,19.20],[51.13,19.50],[50.83,19.43],[50.53,19.23],[50.23,19.00],[50.03,18.73],[49.97,18.43],[50.07,18.20],[50.23,17.97],[50.43,17.83],[50.63,18.07],[51.00,18.37]] },
+  { name:"Wyżyna Małopolska",              color:"#f4511e",
+    coords:[[51.40,19.20],[51.50,18.60],[51.62,19.40],[51.90,20.07],[51.57,21.20],[51.33,21.67],[51.07,21.73],[50.73,21.60],[50.43,21.30],[50.20,20.93],[49.93,20.53],[49.83,20.13],[49.97,19.73],[50.20,19.50],[50.53,19.23],[50.83,19.43],[51.13,19.50]] },
+  { name:"Góry Świętokrzyskie",            color:"#b71c1c",
+    coords:[[51.13,19.50],[50.83,19.43],[50.63,19.80],[50.53,20.30],[50.63,20.73],[50.90,20.90],[51.20,20.53],[51.27,20.07]] }
 ];
 
-
-// ── Mapowanie województwo → kraina ───────────────────────────────────────
-// Kompatybilne z simplemaps.com i andilabs GeoJSON (pole "name" lub "NAME_1")
+// Mapowanie województwo → kraina (dla wgrywanego GeoJSON)
 const WOJ_DO_KRAINY = {
-  // Zachodniopomorskie → Pobrzeże Szczecińskie (pn.) + Pojezierze Pomorskie (pd.)
-  "zachodniopomorskie":    "Pojezierze Pomorskie",   // dominuje
-  "pomorskie":             "Pojezierze Pomorskie",   // Bory Tucholskie, Kaszuby
-  "warmińsko-mazurskie":   "Pojezierze Mazurskie",
-  "podlaskie":             "Podlasie",
-  "wielkopolskie":         "Nizina Wielkopolska",
-  "kujawsko-pomorskie":    "Nizina Wielkopolska",    // Kujawy + Bory
-  "łódzkie":               "Nizina Mazowiecka",      // część Niziny Mazowieckiej
-  "mazowieckie":           "Nizina Mazowiecka",
-  "dolnośląskie":          "Nizina Śląska",
-  "opolskie":              "Nizina Śląska",
-  "śląskie":               "Wyżyna Krakowsko-Częstochowska",
-  "małopolskie":           "Wyżyna Małopolska",
-  "świętokrzyskie":        "Góry Świętokrzyskie",
-  "lubelskie":             "Wyżyna Małopolska",      // Wyżyna Lubelska ≈ Małopolska w szk.podst.
-  "podkarpackie":          "Wyżyna Małopolska",      // Kotlina Sandomierska
-  "lubuskie":              "Nizina Śląska",
+  "zachodniopomorskie":  "Pojezierze Pomorskie",
+  "pomorskie":           "Pojezierze Pomorskie",
+  "warmińsko-mazurskie": "Pojezierze Mazurskie",
+  "podlaskie":           "Podlasie",
+  "wielkopolskie":       "Nizina Wielkopolska",
+  "kujawsko-pomorskie":  "Nizina Wielkopolska",
+  "łódzkie":             "Nizina Mazowiecka",
+  "mazowieckie":         "Nizina Mazowiecka",
+  "dolnośląskie":        "Nizina Śląska",
+  "opolskie":            "Nizina Śląska",
+  "lubuskie":            "Nizina Śląska",
+  "śląskie":             "Wyżyna Krakowsko-Częstochowska",
+  "małopolskie":         "Wyżyna Małopolska",
+  "świętokrzyskie":      "Góry Świętokrzyskie",
+  "lubelskie":           "Wyżyna Małopolska",
+  "podkarpackie":        "Wyżyna Małopolska",
 };
 
-// Obsługa wgrywania zewnętrznego GeoJSON
-document.getElementById('geojson-file').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(ev) {
-        try {
-            const gj = JSON.parse(ev.target.result);
-            loadExternalGeoJSON(gj);
-        } catch(err) {
-            alert('Błąd parsowania pliku GeoJSON: ' + err.message);
-        }
-    };
-    reader.readAsText(file);
-});
-
-function loadExternalGeoJSON(gj) {
-    clearGeoLayers();
-    // Grupuj feature'y per kraina
-    const krainaMap = {};
-    gj.features.forEach(f => {
-        const p = f.properties;
-        // Różne źródła używają różnych pól z nazwą
-        const name = (p.name || p.NAME_1 || p.JPT_NAZWA_ || p.VARNAME_1 || '').toLowerCase().trim();
-        const kraina = WOJ_DO_KRAINY[name];
-        if (!kraina) return;
-        if (!krainaMap[kraina]) krainaMap[kraina] = [];
-        krainaMap[kraina].push(f);
-    });
-
-    if (Object.keys(krainaMap).length === 0) {
-        alert('Nie rozpoznano nazw województw w tym pliku.\nSpróbuj pobrać plik z simplemaps.com/gis/country/pl (przycisk "Download GeoJSON").');
-        return;
-    }
-
-    Object.entries(krainaMap).forEach(([kraina, features]) => {
-        const color = KRAINY_DATA.find(k=>k.name===kraina)?.color || '#607d8b';
-        const layer = L.geoJSON({type:'FeatureCollection',features}, {
-            style: { color:'#1a2e4a', weight:1.5, opacity:.85, fillColor:color, fillOpacity:.45 }
-        });
-        layer.featureName = kraina;
-        layer.on('click', e => { L.DomEvent.stopPropagation(e); handleAnswer(kraina, e.latlng); });
-        layer.addTo(map);
-        geoLayers.push(layer);
-    });
-
-    // Nadpisz quiz żeby działał z nowymi warstwami
-    document.getElementById('geojson-upload').innerHTML = '<b style="color:#1b7c3f">✔ Wgrano prawdziwy GeoJSON województw!</b> Odśwież quiz przyciskiem poniżej lub zmieniając tryb.';
-}
-
-// ── Rzeki i Obiekty ────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════
+// DANE – rzeki i obiekty
+// ════════════════════════════════════════════════════════════════════════
 const OTHERS = [
   { name:"Wisła",  cat:"river", coords:[[49.6,20.0],[50.1,20.3],[50.6,21.0],[51.1,21.6],[51.7,21.4],[52.0,21.1],[52.6,21.1],[53.0,21.0],[53.5,19.9],[53.9,19.1],[54.4,18.7]] },
   { name:"Odra",   cat:"river", coords:[[50.3,17.9],[50.8,16.9],[51.5,16.0],[51.9,15.5],[52.3,14.9],[52.8,14.4],[53.5,14.5]] },
   { name:"Warta",  cat:"river", coords:[[50.48,19.42],[50.82,18.98],[51.08,18.65],[51.38,18.45],[51.65,18.22],[51.92,17.98],[52.18,17.55],[52.38,17.12],[52.52,16.72],[52.58,16.25],[52.60,15.68],[52.55,15.08],[52.58,14.65]] },
   { name:"Bug",    cat:"river", coords:[[50.7,24.0],[51.3,23.6],[51.9,23.7],[52.3,23.4],[52.9,23.0],[53.1,23.6]] },
-  { name:"Morze Bałtyckie",   cat:"sea",  lat:54.8,  lng:17.5 },
-  { name:"Zatoka Gdańska",    cat:"sea",  lat:54.55, lng:18.9 },
-  { name:"Zalew Szczeciński", cat:"sea",  lat:53.8,  lng:14.5 },
+  { name:"Morze Bałtyckie",   cat:"sea",  lat:54.8,  lng:17.5  },
+  { name:"Zatoka Gdańska",    cat:"sea",  lat:54.55, lng:18.9  },
+  { name:"Zalew Szczeciński", cat:"sea",  lat:53.8,  lng:14.5  },
   { name:"Zalew Wiślany",     cat:"sea",  lat:54.38, lng:19.65 },
-  { name:"Śniardwy", cat:"lake", lat:53.73, lng:21.73 },
-  { name:"Mamry",    cat:"lake", lat:54.08, lng:21.70 },
-  { name:"Łebsko",   cat:"lake", lat:54.72, lng:17.40 },
-  { name:"Rysy",     cat:"peak", lat:49.18, lng:20.08 },
-  { name:"Śnieżka",  cat:"peak", lat:50.74, lng:15.74 },
-  { name:"Łysica",   cat:"peak", lat:50.92, lng:20.90 },
-  { name:"Tatrzański PN",  cat:"park", lat:49.25, lng:19.95 },
-  { name:"Białowieski PN", cat:"park", lat:52.75, lng:23.85 },
-  { name:"Biebrzański PN", cat:"park", lat:53.40, lng:22.60 },
-  { name:"Słowiński PN",   cat:"park", lat:54.65, lng:17.45 },
-  { name:"Kampinoski PN",  cat:"park", lat:52.30, lng:20.80 }
+  { name:"Śniardwy",          cat:"lake", lat:53.73, lng:21.73 },
+  { name:"Mamry",             cat:"lake", lat:54.08, lng:21.70 },
+  { name:"Łebsko",            cat:"lake", lat:54.72, lng:17.40 },
+  { name:"Rysy",              cat:"peak", lat:49.18, lng:20.08 },
+  { name:"Śnieżka",           cat:"peak", lat:50.74, lng:15.74 },
+  { name:"Łysica",            cat:"peak", lat:50.92, lng:20.90 },
+  { name:"Tatrzański PN",     cat:"park", lat:49.25, lng:19.95 },
+  { name:"Białowieski PN",    cat:"park", lat:52.75, lng:23.85 },
+  { name:"Biebrzański PN",    cat:"park", lat:53.40, lng:22.60 },
+  { name:"Słowiński PN",      cat:"park", lat:54.65, lng:17.45 },
+  { name:"Kampinoski PN",     cat:"park", lat:52.30, lng:20.80 },
 ];
 
 const CAT_STYLE = {
@@ -262,58 +150,65 @@ const CAT_STYLE = {
   sea:   { fill:'#0277bd', icon:'🌊' },
   lake:  { fill:'#29b6f6', icon:'💧' },
   peak:  { fill:'#c62828', icon:'⛰' },
-  park:  { fill:'#2e7d32', icon:'🌿' }
+  park:  { fill:'#2e7d32', icon:'🌿' },
 };
 
-// ── Stan ───────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════
+// STAN
+// ════════════════════════════════════════════════════════════════════════
 let map, topoLayer, osmLayer, currentTileLayer;
 let geoLayers = [];
 let quiz = [], score = 0, current = 0, answered = false;
 let autoAdvanceTimeout = null;
 let currentMode = 'krainy';
 
+// ════════════════════════════════════════════════════════════════════════
+// MAPA
+// ════════════════════════════════════════════════════════════════════════
 function initMap() {
     map = L.map('map', {
         maxBounds:[[48.3,12.8],[55.6,25.2]], maxBoundsViscosity:.85,
         minZoom:6, maxZoom:12
-    }).setView([52.1,19.4],6);
+    }).setView([52.1,19.4], 6);
+
     topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution:'© OpenTopoMap', opacity:.85 });
     osmLayer  = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' });
     currentTileLayer = topoLayer;
     topoLayer.addTo(map);
 }
 
-// ── Rysuj krainy ──────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════
+// WARSTWY
+// ════════════════════════════════════════════════════════════════════════
+function clearGeoLayers() {
+    geoLayers.forEach(l => map.removeLayer(l));
+    geoLayers = [];
+}
+
+function addKrainaLayer(name, color, geojsonFeatures) {
+    const layer = L.geoJSON({ type:'FeatureCollection', features: geojsonFeatures }, {
+        style: { color:'#1a2e4a', weight:1.8, opacity:.85, fillColor:color, fillOpacity:.45 }
+    });
+    layer.featureName = name;
+    layer.on('click', e => { L.DomEvent.stopPropagation(e); handleAnswer(name, e.latlng); });
+    layer.addTo(map);
+    geoLayers.push(layer);
+}
+
 function renderKrainy() {
     clearGeoLayers();
     KRAINY_DATA.forEach(k => {
-        // Zamień [lat,lng] → GeoJSON [lng,lat]
+        // coords są [lat,lng] → GeoJSON potrzebuje [lng,lat]
         const ring = k.coords.map(c => [c[1], c[0]]);
-        ring.push(ring[0]); // zamknij pierścień
-        const geojson = {
-            type: "Feature",
-            properties: { name: k.name },
-            geometry: { type: "Polygon", coordinates: [ring] }
-        };
-        const layer = L.geoJSON(geojson, {
-            style: {
-                color: '#1a2e4a', weight: 1.8, opacity: .85,
-                fillColor: k.color, fillOpacity: .45,
-                dashArray: null
-            }
-        });
-        layer.featureName = k.name;
-        layer.on('click', e => {
-            L.DomEvent.stopPropagation(e);
-            handleAnswer(k.name, e.latlng);
-        });
-        // tooltip ukryty celowo – to quiz
-        layer.addTo(map);
-        geoLayers.push(layer);
+        ring.push(ring[0]);
+        addKrainaLayer(k.name, k.color, [{
+            type: 'Feature',
+            properties: {},
+            geometry: { type:'Polygon', coordinates:[ring] }
+        }]);
     });
 }
 
-// ── Rysuj rzeki i obiekty ──────────────────────────────────────────────────
 function renderOthers() {
     clearGeoLayers();
     OTHERS.forEach(item => {
@@ -321,19 +216,18 @@ function renderOthers() {
         let layer;
         if (item.cat === 'river') {
             const shadow = L.polyline(item.coords, { color:'#fff', weight:st.weight+5, opacity:.3 });
-            shadow.addTo(map); geoLayers.push(shadow);
+            shadow.addTo(map);
+            geoLayers.push(shadow);
             layer = L.polyline(item.coords, { color:st.color, weight:st.weight, opacity:st.opacity });
-            // bez tooltip – quiz
             layer.on('click', e => { L.DomEvent.stopPropagation(e); handleAnswer(item.name, e.latlng); });
             shadow.on('click', e => { L.DomEvent.stopPropagation(e); handleAnswer(item.name, e.latlng); });
         } else {
             const icon = L.divIcon({
-                className:'',
-                html:`<div style="background:${st.fill};color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer">${st.icon}</div>`,
-                iconSize:[32,32], iconAnchor:[16,16]
+                className: '',
+                html: `<div style="background:${st.fill};color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer">${st.icon}</div>`,
+                iconSize: [32,32], iconAnchor: [16,16]
             });
             layer = L.marker([item.lat, item.lng], { icon });
-            // bez tooltip – quiz
             layer.on('click', e => { L.DomEvent.stopPropagation(e); handleAnswer(item.name, e.latlng); });
         }
         layer.featureName = item.name;
@@ -342,16 +236,41 @@ function renderOthers() {
     });
 }
 
-function clearGeoLayers() {
-    geoLayers.forEach(l => map.removeLayer(l));
-    geoLayers = [];
+function loadExternalGeoJSON(gj) {
+    // Grupuj województwa per kraina
+    const krainaMap = {};
+    (gj.features || []).forEach(f => {
+        const p = f.properties || {};
+        const raw = p.name || p.NAME_1 || p.JPT_NAZWA_ || p.VARNAME_1 || p.admin_name || '';
+        const name = raw.toLowerCase().trim();
+        const kraina = WOJ_DO_KRAINY[name];
+        if (!kraina) return;
+        if (!krainaMap[kraina]) krainaMap[kraina] = [];
+        krainaMap[kraina].push(f);
+    });
+
+    if (!Object.keys(krainaMap).length) {
+        alert('Nie rozpoznano nazw województw.\nSpróbuj plik z simplemaps.com → "Download GeoJSON" (admin1).');
+        return;
+    }
+
+    clearGeoLayers();
+    Object.entries(krainaMap).forEach(([kraina, features]) => {
+        const color = (KRAINY_DATA.find(k => k.name === kraina) || {}).color || '#607d8b';
+        addKrainaLayer(kraina, color, features);
+    });
+
+    document.getElementById('geojson-box').innerHTML =
+        '<b style="color:#1b7c3f">✔ Wgrano GeoJSON województw – mapa jest teraz dokładna!</b>';
 }
 
-// ── Quiz ───────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════
+// QUIZ
+// ════════════════════════════════════════════════════════════════════════
 function shuffle(arr) {
-    for (let i = arr.length-1; i>0; i--) {
-        const j = Math.floor(Math.random()*(i+1));
-        [arr[i],arr[j]]=[arr[j],arr[i]];
+    for (let i = arr.length-1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i+1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
     }
 }
 
@@ -362,12 +281,9 @@ function handleAnswer(clickedName, latlng) {
     const isCorrect = clickedName === correct;
     const fb = document.getElementById('feedback');
     fb.className = isCorrect ? 'correct' : 'wrong';
-    if (isCorrect) {
-        score++;
-        fb.textContent = '✔ Dobrze! To ' + correct;
-    } else {
-        fb.textContent = `✘ Błąd – wybrałeś: „${clickedName}". Prawidłowo: „${correct}"`;
-    }
+    fb.textContent = isCorrect
+        ? '✔ Dobrze! To ' + correct
+        : `✘ Błąd – wybrałeś: „${clickedName}". Prawidłowo: „${correct}"`;
     pulseLayer(clickedName, isCorrect ? '#00c853' : '#ef4444');
     if (!isCorrect) pulseLayer(correct, '#00c853');
     document.getElementById('score').innerHTML = `Wynik: <b>${score}</b> / ${quiz.length}`;
@@ -376,11 +292,11 @@ function handleAnswer(clickedName, latlng) {
 }
 
 function pulseLayer(name, color) {
+    const style = { fillColor:color, fillOpacity:.78, color:color, weight:3 };
     geoLayers.forEach(l => {
         if (l.featureName !== name) return;
-        const style = { fillColor:color, fillOpacity:.78, color:color, weight:3 };
         if (l.setStyle) l.setStyle(style);
-        if (l.eachLayer) l.eachLayer(sub => sub.setStyle && sub.setStyle(style));
+        if (l.eachLayer) l.eachLayer(sub => { if (sub.setStyle) sub.setStyle(style); });
     });
 }
 
@@ -389,7 +305,7 @@ function advanceQuestion() {
     document.getElementById('feedback').className = '';
     current++;
     if (current >= quiz.length) {
-        const pct = Math.round(score/quiz.length*100);
+        const pct = Math.round(score / quiz.length * 100);
         alert(`Koniec testu!\nWynik: ${score}/${quiz.length} (${pct}%) 🎉`);
         setMode(currentMode);
         return;
@@ -400,7 +316,7 @@ function advanceQuestion() {
 }
 
 function showQuestion() {
-    document.getElementById('score').innerHTML    = `Wynik: <b>${score}</b> / ${quiz.length}`;
+    document.getElementById('score').innerHTML     = `Wynik: <b>${score}</b> / ${quiz.length}`;
     document.getElementById('counter').textContent = `Pytanie ${current+1} / ${quiz.length}`;
     document.getElementById('question').textContent = '▸ ' + quiz[current];
     document.getElementById('feedback').textContent = '';
@@ -408,65 +324,79 @@ function showQuestion() {
     answered = false;
 }
 
-function showInfoBar(msg, ms) {
-    const el = document.getElementById('info-bar');
-    el.textContent = msg; el.style.display = 'block';
-    if (ms) setTimeout(() => el.style.display='none', ms);
-}
-
+// ════════════════════════════════════════════════════════════════════════
+// TRYB
+// ════════════════════════════════════════════════════════════════════════
 function setMode(mode) {
     currentMode = mode;
-    score=0; current=0; answered=false;
+    score = 0; current = 0; answered = false;
     clearTimeout(autoAdvanceTimeout);
-    document.getElementById('feedback').textContent='';
-    document.getElementById('feedback').className='';
-    document.querySelectorAll('.mode-buttons button').forEach(b=>b.classList.remove('active'));
-    document.getElementById('btn-'+mode).classList.add('active');
+    document.getElementById('feedback').textContent = '';
+    document.getElementById('feedback').className = '';
+    document.querySelectorAll('.mode-buttons button').forEach(b => b.classList.remove('active'));
+    document.getElementById('btn-' + mode).classList.add('active');
     map.removeLayer(currentTileLayer);
-    currentTileLayer = (mode==='others') ? osmLayer : topoLayer;
+    currentTileLayer = (mode === 'others') ? osmLayer : topoLayer;
     currentTileLayer.addTo(map);
 
-    if (mode==='krainy') {
+    if (mode === 'krainy') {
         renderKrainy();
-        quiz = KRAINY_DATA.map(k=>k.name);
+        quiz = KRAINY_DATA.map(k => k.name);
     } else {
         renderOthers();
-        quiz = OTHERS.map(d=>d.name);
+        quiz = OTHERS.map(d => d.name);
     }
     shuffle(quiz);
-    document.getElementById('next').style.display='block';
+    document.getElementById('next').style.display = 'block';
     updateLegend();
     showQuestion();
 }
 
 function updateLegend() {
     const el = document.getElementById('legend');
-    if (currentMode==='krainy') {
+    if (currentMode === 'krainy') {
         const rows = KRAINY_DATA.map(k =>
             `<span class="leg-item"><span class="dot" style="background:${k.color}"></span>${k.name}</span>`
         ).join('');
         el.innerHTML = `<b>Krainy geograficzne Polski</b><div class="leg-row">${rows}</div>`;
     } else {
         el.innerHTML = `<b>Legenda:</b><div class="leg-row">
-          <span class="leg-item"><span class="line-sym" style="background:#1565c0"></span>Rzeki</span>
-          <span class="leg-item"><span class="dot" style="background:#0277bd"></span>Morza/akweny 🌊</span>
-          <span class="leg-item"><span class="dot" style="background:#29b6f6"></span>Jeziora 💧</span>
-          <span class="leg-item"><span class="dot" style="background:#c62828"></span>Szczyty ⛰</span>
-          <span class="leg-item"><span class="dot" style="background:#2e7d32"></span>Parki PN 🌿</span>
+            <span class="leg-item"><span class="line-sym" style="background:#1565c0"></span>Rzeki</span>
+            <span class="leg-item"><span class="dot" style="background:#0277bd"></span>Morza/akweny 🌊</span>
+            <span class="leg-item"><span class="dot" style="background:#29b6f6"></span>Jeziora 💧</span>
+            <span class="leg-item"><span class="dot" style="background:#c62828"></span>Szczyty ⛰</span>
+            <span class="leg-item"><span class="dot" style="background:#2e7d32"></span>Parki PN 🌿</span>
         </div>`;
     }
 }
 
-document.getElementById('next').onclick = () => {
-    if (!answered) return;
-    clearTimeout(autoAdvanceTimeout);
-    advanceQuestion();
-};
-
+// ════════════════════════════════════════════════════════════════════════
+// START – wszystkie event listenery TUTAJ, po zdefiniowaniu funkcji
+// ════════════════════════════════════════════════════════════════════════
 window.onload = () => {
     initMap();
-    setTimeout(()=>map.invalidateSize(), 200);
+    setTimeout(() => map.invalidateSize(), 200);
     setMode('krainy');
+
+    document.getElementById('next').onclick = () => {
+        if (!answered) return;
+        clearTimeout(autoAdvanceTimeout);
+        advanceQuestion();
+    };
+
+    document.getElementById('geojson-file').addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+            try {
+                loadExternalGeoJSON(JSON.parse(ev.target.result));
+            } catch (err) {
+                alert('Błąd odczytu pliku: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+    });
 };
 </script>
 </body>
