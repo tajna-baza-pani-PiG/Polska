@@ -36,8 +36,10 @@
         .line-sym { width:22px; height:4px; border-radius:2px; flex-shrink:0; }
         #geojson-box { margin-top:10px; padding:10px 14px; background:#fff; border-radius:10px; font-size:13px; color:#4a5568; box-shadow:0 1px 4px rgba(0,0,0,0.06); }
         #geojson-box a { color:#2d89ef; }
-        .leaflet-tooltip.obj-tip { background:rgba(20,30,50,0.88); color:#fff; border:none; border-radius:6px; font-family:'Lato',sans-serif; font-size:13px; font-weight:700; padding:4px 10px; box-shadow:0 2px 6px rgba(0,0,0,.3); pointer-events:none; }
-        .leaflet-tooltip.obj-tip::before { display:none; }
+        /* ── Wyłącz WSZYSTKIE natywne tooltips Leafleta (tytuły SVG) ── */
+        #map .leaflet-tooltip { display:none !important; }
+        #map path { pointer-events: visiblePainted; }
+        /* Natywne title w SVG – ukryj przez CSS nie działa, ale usuwamy je przez JS */
     </style>
 </head>
 <body>
@@ -62,15 +64,12 @@
     <div id="geojson-box">
         <b>🗂 Dokładniejsza mapa:</b>
         Pobierz <a href="https://simplemaps.com/gis/country/pl" target="_blank">GeoJSON województw (simplemaps.com → Download GeoJSON)</a>
-        i wgraj tutaj: <input type="file" id="geojson-file" accept=".json,.geojson" style="margin-left:6px;font-size:12px">
+        i wgraj: <input type="file" id="geojson-file" accept=".json,.geojson" style="margin-left:6px;font-size:12px">
     </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ════════════════════════════════════════════════════════════════════════
-// DANE – krainy geograficzne (przybliżone poligony, klikalne)
-// ════════════════════════════════════════════════════════════════════════
 const KRAINY_DATA = [
   { name:"Pobrzeże Szczecińskie",          color:"#0d47a1",
     coords:[[53.33,14.07],[53.62,14.07],[54.12,14.13],[54.37,14.28],[54.55,14.55],[54.60,15.12],[54.45,15.50],[54.17,15.53],[53.83,15.43],[53.57,15.23],[53.37,14.93],[53.28,14.45]] },
@@ -97,10 +96,9 @@ const KRAINY_DATA = [
   { name:"Wyżyna Małopolska",              color:"#f4511e",
     coords:[[51.40,19.20],[51.50,18.60],[51.62,19.40],[51.90,20.07],[51.57,21.20],[51.33,21.67],[51.07,21.73],[50.73,21.60],[50.43,21.30],[50.20,20.93],[49.93,20.53],[49.83,20.13],[49.97,19.73],[50.20,19.50],[50.53,19.23],[50.83,19.43],[51.13,19.50]] },
   { name:"Góry Świętokrzyskie",            color:"#b71c1c",
-    coords:[[51.13,19.50],[50.83,19.43],[50.63,19.80],[50.53,20.30],[50.63,20.73],[50.90,20.90],[51.20,20.53],[51.27,20.07]] }
+    coords:[[51.13,19.50],[50.83,19.43],[50.63,19.80],[50.53,20.30],[50.63,20.73],[50.90,20.90],[51.20,20.53],[51.27,20.07]] },
 ];
 
-// Mapowanie województwo → kraina (dla wgrywanego GeoJSON)
 const WOJ_DO_KRAINY = {
   "zachodniopomorskie":  "Pojezierze Pomorskie",
   "pomorskie":           "Pojezierze Pomorskie",
@@ -120,9 +118,6 @@ const WOJ_DO_KRAINY = {
   "podkarpackie":        "Wyżyna Małopolska",
 };
 
-// ════════════════════════════════════════════════════════════════════════
-// DANE – rzeki i obiekty
-// ════════════════════════════════════════════════════════════════════════
 const OTHERS = [
   { name:"Wisła",  cat:"river", coords:[[49.6,20.0],[50.1,20.3],[50.6,21.0],[51.1,21.6],[51.7,21.4],[52.0,21.1],[52.6,21.1],[53.0,21.0],[53.5,19.9],[53.9,19.1],[54.4,18.7]] },
   { name:"Odra",   cat:"river", coords:[[50.3,17.9],[50.8,16.9],[51.5,16.0],[51.9,15.5],[52.3,14.9],[52.8,14.4],[53.5,14.5]] },
@@ -153,58 +148,58 @@ const CAT_STYLE = {
   park:  { fill:'#2e7d32', icon:'🌿' },
 };
 
-// ════════════════════════════════════════════════════════════════════════
-// STAN
-// ════════════════════════════════════════════════════════════════════════
 let map, topoLayer, osmLayer, currentTileLayer;
 let geoLayers = [];
 let quiz = [], score = 0, current = 0, answered = false;
 let autoAdvanceTimeout = null;
 let currentMode = 'krainy';
 
-// ════════════════════════════════════════════════════════════════════════
-// MAPA
-// ════════════════════════════════════════════════════════════════════════
 function initMap() {
     map = L.map('map', {
         maxBounds:[[48.3,12.8],[55.6,25.2]], maxBoundsViscosity:.85,
         minZoom:6, maxZoom:12
     }).setView([52.1,19.4], 6);
-
-    topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution:'© OpenTopoMap', opacity:.85 });
-    osmLayer  = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' });
+    topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+        { attribution:'© OpenTopoMap', opacity:.85 });
+    osmLayer  = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        { attribution:'© OpenStreetMap' });
     currentTileLayer = topoLayer;
     topoLayer.addTo(map);
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// WARSTWY
-// ════════════════════════════════════════════════════════════════════════
 function clearGeoLayers() {
     geoLayers.forEach(l => map.removeLayer(l));
     geoLayers = [];
 }
 
+// Usuwa element <title> z SVG który przeglądarka pokazuje jako natywny tooltip
+function removeSvgTitles(layer) {
+    setTimeout(() => {
+        const el = layer.getPane ? layer.getPane() : null;
+        document.querySelectorAll('#map title').forEach(t => t.remove());
+    }, 50);
+}
+
 function addKrainaLayer(name, color, geojsonFeatures) {
-    const layer = L.geoJSON({ type:'FeatureCollection', features: geojsonFeatures }, {
-        style: { color:'#1a2e4a', weight:1.8, opacity:.85, fillColor:color, fillOpacity:.45 }
-    });
+    const layer = L.geoJSON(
+        { type:'FeatureCollection', features: geojsonFeatures },
+        { style: { color:'#1a2e4a', weight:1.8, opacity:.85, fillColor:color, fillOpacity:.45 } }
+    );
     layer.featureName = name;
     layer.on('click', e => { L.DomEvent.stopPropagation(e); handleAnswer(name, e.latlng); });
     layer.addTo(map);
     geoLayers.push(layer);
+    removeSvgTitles(layer);
 }
 
 function renderKrainy() {
     clearGeoLayers();
     KRAINY_DATA.forEach(k => {
-        // coords są [lat,lng] → GeoJSON potrzebuje [lng,lat]
-        const ring = k.coords.map(c => [c[1], c[0]]);
-        ring.push(ring[0]);
+        const ring = k.coords.map(c => [c[1], c[0]]); // [lat,lng] → [lng,lat]
+        ring.push(ring[0]); // zamknij pierścień
         addKrainaLayer(k.name, k.color, [{
-            type: 'Feature',
-            properties: {},
-            geometry: { type:'Polygon', coordinates:[ring] }
+            type:'Feature', properties:{},
+            geometry:{ type:'Polygon', coordinates:[ring] }
         }]);
     });
 }
@@ -215,29 +210,32 @@ function renderOthers() {
         const st = CAT_STYLE[item.cat];
         let layer;
         if (item.cat === 'river') {
-            const shadow = L.polyline(item.coords, { color:'#fff', weight:st.weight+5, opacity:.3 });
+            // shadow – nieinteraktywny, tylko wizualny
+            const shadow = L.polyline(item.coords,
+                { color:'#fff', weight:st.weight+5, opacity:.3, interactive:false });
             shadow.addTo(map);
             geoLayers.push(shadow);
             layer = L.polyline(item.coords, { color:st.color, weight:st.weight, opacity:st.opacity });
             layer.on('click', e => { L.DomEvent.stopPropagation(e); handleAnswer(item.name, e.latlng); });
-            shadow.on('click', e => { L.DomEvent.stopPropagation(e); handleAnswer(item.name, e.latlng); });
         } else {
+            // marker bez opcji title (Leaflet dodaje natywny tooltip gdy title jest ustawiony)
             const icon = L.divIcon({
                 className: '',
                 html: `<div style="background:${st.fill};color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer">${st.icon}</div>`,
                 iconSize: [32,32], iconAnchor: [16,16]
             });
-            layer = L.marker([item.lat, item.lng], { icon });
+            layer = L.marker([item.lat, item.lng], { icon, title:'' }); // title:'' → brak natywnego tooltipa
             layer.on('click', e => { L.DomEvent.stopPropagation(e); handleAnswer(item.name, e.latlng); });
         }
         layer.featureName = item.name;
         layer.addTo(map);
         geoLayers.push(layer);
     });
+    // Usuń wszystkie elementy <title> z SVG po wyrenderowaniu
+    setTimeout(() => document.querySelectorAll('#map title').forEach(t => t.remove()), 100);
 }
 
 function loadExternalGeoJSON(gj) {
-    // Grupuj województwa per kraina
     const krainaMap = {};
     (gj.features || []).forEach(f => {
         const p = f.properties || {};
@@ -248,25 +246,19 @@ function loadExternalGeoJSON(gj) {
         if (!krainaMap[kraina]) krainaMap[kraina] = [];
         krainaMap[kraina].push(f);
     });
-
     if (!Object.keys(krainaMap).length) {
-        alert('Nie rozpoznano nazw województw.\nSpróbuj plik z simplemaps.com → "Download GeoJSON" (admin1).');
+        alert('Nie rozpoznano nazw województw.\nSpróbuj plik z simplemaps.com → "Download GeoJSON".');
         return;
     }
-
     clearGeoLayers();
     Object.entries(krainaMap).forEach(([kraina, features]) => {
         const color = (KRAINY_DATA.find(k => k.name === kraina) || {}).color || '#607d8b';
         addKrainaLayer(kraina, color, features);
     });
-
     document.getElementById('geojson-box').innerHTML =
-        '<b style="color:#1b7c3f">✔ Wgrano GeoJSON województw – mapa jest teraz dokładna!</b>';
+        '<b style="color:#1b7c3f">✔ Wgrano GeoJSON – mapa jest teraz dokładna!</b>';
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// QUIZ
-// ════════════════════════════════════════════════════════════════════════
 function shuffle(arr) {
     for (let i = arr.length-1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i+1));
@@ -284,6 +276,7 @@ function handleAnswer(clickedName, latlng) {
     fb.textContent = isCorrect
         ? '✔ Dobrze! To ' + correct
         : `✘ Błąd – wybrałeś: „${clickedName}". Prawidłowo: „${correct}"`;
+    if (isCorrect) score++;
     pulseLayer(clickedName, isCorrect ? '#00c853' : '#ef4444');
     if (!isCorrect) pulseLayer(correct, '#00c853');
     document.getElementById('score').innerHTML = `Wynik: <b>${score}</b> / ${quiz.length}`;
@@ -324,9 +317,6 @@ function showQuestion() {
     answered = false;
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// TRYB
-// ════════════════════════════════════════════════════════════════════════
 function setMode(mode) {
     currentMode = mode;
     score = 0; current = 0; answered = false;
@@ -338,7 +328,6 @@ function setMode(mode) {
     map.removeLayer(currentTileLayer);
     currentTileLayer = (mode === 'others') ? osmLayer : topoLayer;
     currentTileLayer.addTo(map);
-
     if (mode === 'krainy') {
         renderKrainy();
         quiz = KRAINY_DATA.map(k => k.name);
@@ -370,9 +359,6 @@ function updateLegend() {
     }
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// START – wszystkie event listenery TUTAJ, po zdefiniowaniu funkcji
-// ════════════════════════════════════════════════════════════════════════
 window.onload = () => {
     initMap();
     setTimeout(() => map.invalidateSize(), 200);
@@ -389,11 +375,8 @@ window.onload = () => {
         if (!file) return;
         const reader = new FileReader();
         reader.onload = ev => {
-            try {
-                loadExternalGeoJSON(JSON.parse(ev.target.result));
-            } catch (err) {
-                alert('Błąd odczytu pliku: ' + err.message);
-            }
+            try { loadExternalGeoJSON(JSON.parse(ev.target.result)); }
+            catch (err) { alert('Błąd odczytu pliku: ' + err.message); }
         };
         reader.readAsText(file);
     });
