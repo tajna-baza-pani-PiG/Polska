@@ -16,8 +16,8 @@
         .mode-buttons { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
         .mode-buttons button { padding:8px 18px; font-size:14px; font-family:'Lato',sans-serif; font-weight:700; border:2px solid #c5cfe0; border-radius:20px; cursor:pointer; background:#fff; color:#4a5568; transition:all .15s; }
         .mode-buttons button:hover { border-color:#2d89ef; color:#2d89ef; }
-        .mode-buttons button.active { background:#2d89ef; border-color:#2d89ef; color:#fff; box-shadow:0 2px 8px rgba(45,137,239,.35); }
-        #quiz-panel { background:#fff; border-radius:12px; padding:11px 16px; margin-bottom:10px; box-shadow:0 2px 8px rgba(0,0,0,0.07); display:flex; flex-direction:column; gap:4px; }
+        .mode-buttons button.active { background:#2d89ef; border-color:#2d89ef; color:#fff; }
+        #quiz-panel { background:#fff; border-radius:12px; padding:11px 16px; margin-bottom:10px; box-shadow:0 2px 8px rgba(0,0,0,.07); display:flex; flex-direction:column; gap:4px; }
         #counter { font-size:12px; color:#8896aa; font-weight:700; text-transform:uppercase; letter-spacing:.6px; }
         #question { font-size:20px; font-weight:700; color:#1a2e4a; min-height:30px; }
         #feedback { font-size:15px; min-height:20px; font-weight:700; padding:2px 0; }
@@ -25,21 +25,19 @@
         #feedback.wrong   { color:#b91c1c; }
         #score { font-size:13px; color:#4a5568; border-top:1px solid #eef2f7; padding-top:5px; margin-top:2px; }
         #score b { color:#2d89ef; font-size:15px; }
-        #map { height:68vh; min-height:480px; border-radius:14px; box-shadow:0 6px 24px rgba(0,0,0,0.18); position:relative; overflow:hidden; }
+        #map { height:68vh; min-height:480px; border-radius:14px; box-shadow:0 6px 24px rgba(0,0,0,.18); position:relative; overflow:hidden; }
         #next { width:100%; padding:12px; margin-top:10px; background:#2d89ef; color:#fff; font-family:'Lato',sans-serif; font-size:16px; font-weight:700; border:none; border-radius:10px; cursor:pointer; display:none; box-shadow:0 3px 10px rgba(45,137,239,.4); transition:background .15s; }
         #next:hover { background:#1a6fcc; }
-        #legend { margin-top:10px; padding:10px 14px; background:#fff; border-radius:10px; font-size:13px; line-height:1.8; color:#4a5568; box-shadow:0 1px 4px rgba(0,0,0,0.06); }
+        #legend { margin-top:10px; padding:10px 14px; background:#fff; border-radius:10px; font-size:13px; line-height:1.8; color:#4a5568; box-shadow:0 1px 4px rgba(0,0,0,.06); }
         #legend b { color:#1a2e4a; }
         .leg-row { display:flex; flex-wrap:wrap; gap:5px 16px; margin-top:4px; }
         .leg-item { display:flex; align-items:center; gap:5px; }
-        .dot { width:12px; height:12px; border-radius:3px; flex-shrink:0; border:1px solid rgba(0,0,0,0.15); }
+        .dot { width:12px; height:12px; border-radius:3px; flex-shrink:0; border:1px solid rgba(0,0,0,.15); }
         .line-sym { width:22px; height:4px; border-radius:2px; flex-shrink:0; }
-        #geojson-box { margin-top:10px; padding:10px 14px; background:#fff; border-radius:10px; font-size:13px; color:#4a5568; box-shadow:0 1px 4px rgba(0,0,0,0.06); }
-        #geojson-box a { color:#2d89ef; }
-        /* ── Wyłącz WSZYSTKIE natywne tooltips Leafleta (tytuły SVG) ── */
-        #map .leaflet-tooltip { display:none !important; }
-        #map path { pointer-events: visiblePainted; }
-        /* Natywne title w SVG – ukryj przez CSS nie działa, ale usuwamy je przez JS */
+        #status-bar { margin-top:8px; padding:6px 12px; border-radius:8px; font-size:12px; color:#555; background:#f8f9fb; display:none; }
+        /* Ukryj WSZYSTKIE tooltips Leafleta i natywne title SVG */
+        .leaflet-tooltip { display:none !important; visibility:hidden !important; }
+        #map svg title { display:none; }
     </style>
 </head>
 <body>
@@ -61,45 +59,33 @@
     <div id="map"></div>
     <button id="next">Następne pytanie ▶</button>
     <div id="legend"></div>
-    <div id="geojson-box">
-        <b>🗂 Dokładniejsza mapa:</b>
-        Pobierz <a href="https://simplemaps.com/gis/country/pl" target="_blank">GeoJSON województw (simplemaps.com → Download GeoJSON)</a>
-        i wgraj: <input type="file" id="geojson-file" accept=".json,.geojson" style="margin-left:6px;font-size:12px">
-    </div>
+    <div id="status-bar"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const KRAINY_DATA = [
-  { name:"Pobrzeże Szczecińskie",          color:"#0d47a1",
-    coords:[[53.33,14.07],[53.62,14.07],[54.12,14.13],[54.37,14.28],[54.55,14.55],[54.60,15.12],[54.45,15.50],[54.17,15.53],[53.83,15.43],[53.57,15.23],[53.37,14.93],[53.28,14.45]] },
-  { name:"Pobrzeże Koszalińskie",          color:"#1565c0",
-    coords:[[54.17,15.53],[54.45,15.50],[54.60,15.12],[54.72,15.57],[54.78,16.18],[54.82,16.88],[54.68,17.17],[54.42,17.22],[54.10,17.07],[53.90,16.68],[53.88,16.13],[53.95,15.67]] },
-  { name:"Pobrzeże Słowińskie",            color:"#1976d2",
-    coords:[[54.42,17.22],[54.68,17.17],[54.82,16.88],[54.88,17.35],[54.92,17.90],[54.90,18.30],[54.72,18.53],[54.47,18.57],[54.22,18.40],[54.07,18.03],[54.10,17.57],[54.20,17.27]] },
-  { name:"Pobrzeże Gdańskie",              color:"#1e88e5",
-    coords:[[54.22,18.40],[54.47,18.57],[54.72,18.53],[54.87,18.30],[54.85,18.78],[54.87,19.57],[54.62,19.87],[54.27,19.92],[53.93,19.70],[53.83,19.13],[53.90,18.70],[54.07,18.40]] },
-  { name:"Pojezierze Pomorskie",           color:"#2e7d32",
-    coords:[[53.37,14.93],[53.57,15.23],[53.83,15.43],[53.95,15.67],[53.88,16.13],[53.90,16.68],[54.10,17.07],[54.20,17.27],[54.10,17.57],[54.07,18.03],[53.83,18.37],[53.57,18.40],[53.32,18.13],[53.07,17.70],[52.82,17.23],[52.63,16.63],[52.73,16.13],[52.92,15.73],[53.12,15.40],[53.23,15.12]] },
-  { name:"Pojezierze Mazurskie",           color:"#388e3c",
-    coords:[[53.83,19.13],[53.93,19.70],[54.27,19.92],[54.62,19.87],[54.87,19.57],[54.80,20.40],[54.70,21.13],[54.43,21.63],[54.10,22.07],[53.70,22.43],[53.37,22.43],[53.12,22.07],[52.93,21.32],[52.97,20.43],[53.17,19.83],[53.40,19.43],[53.57,18.87],[53.83,18.70]] },
-  { name:"Nizina Wielkopolska",            color:"#795548",
-    coords:[[52.63,16.63],[52.82,17.23],[53.07,17.70],[53.32,18.13],[53.57,18.40],[53.40,19.43],[53.17,19.83],[52.97,20.43],[52.93,21.32],[52.48,21.13],[52.18,20.67],[51.90,20.07],[51.62,19.40],[51.50,18.60],[51.53,18.00],[51.73,17.43],[51.97,16.97],[52.23,16.70],[52.43,16.47]] },
-  { name:"Nizina Mazowiecka",              color:"#8d6e63",
-    coords:[[52.93,21.32],[53.12,22.07],[53.37,22.43],[53.43,22.90],[53.20,23.07],[52.83,23.02],[52.43,22.57],[52.07,22.20],[51.73,21.73],[51.57,21.20],[51.90,20.07],[52.18,20.67],[52.48,21.13]] },
-  { name:"Nizina Śląska",                  color:"#6d4c41",
-    coords:[[52.43,16.47],[52.23,16.70],[51.97,16.97],[51.73,17.43],[51.53,18.00],[51.50,18.60],[51.30,18.53],[51.00,18.37],[50.63,18.07],[50.30,17.73],[50.07,17.43],[50.03,17.10],[50.20,16.83],[50.43,16.43],[50.73,15.97],[51.10,15.63],[51.43,15.43],[51.73,15.60],[52.07,16.03],[52.33,16.30]] },
-  { name:"Podlasie",                       color:"#4e342e",
-    coords:[[52.43,22.57],[52.83,23.02],[53.20,23.07],[53.43,22.90],[53.70,22.43],[54.10,22.07],[54.17,22.73],[53.87,23.17],[53.43,23.50],[52.97,23.67],[52.50,23.63],[51.97,23.47],[51.57,23.07],[51.50,22.57],[51.73,21.73],[52.07,22.20]] },
-  { name:"Wyżyna Krakowsko-Częstochowska", color:"#e64a19",
-    coords:[[51.30,18.53],[51.50,18.60],[51.40,19.20],[51.13,19.50],[50.83,19.43],[50.53,19.23],[50.23,19.00],[50.03,18.73],[49.97,18.43],[50.07,18.20],[50.23,17.97],[50.43,17.83],[50.63,18.07],[51.00,18.37]] },
-  { name:"Wyżyna Małopolska",              color:"#f4511e",
-    coords:[[51.40,19.20],[51.50,18.60],[51.62,19.40],[51.90,20.07],[51.57,21.20],[51.33,21.67],[51.07,21.73],[50.73,21.60],[50.43,21.30],[50.20,20.93],[49.93,20.53],[49.83,20.13],[49.97,19.73],[50.20,19.50],[50.53,19.23],[50.83,19.43],[51.13,19.50]] },
-  { name:"Góry Świętokrzyskie",            color:"#b71c1c",
-    coords:[[51.13,19.50],[50.83,19.43],[50.63,19.80],[50.53,20.30],[50.63,20.73],[50.90,20.90],[51.20,20.53],[51.27,20.07]] },
+// ════════════════════════════════════════
+// KONFIGURACJA KRAIN
+// ════════════════════════════════════════
+const KRAINY_META = [
+  { name:"Pobrzeże Szczecińskie",          color:"#0d47a1" },
+  { name:"Pobrzeże Koszalińskie",          color:"#1565c0" },
+  { name:"Pobrzeże Słowińskie",            color:"#1976d2" },
+  { name:"Pobrzeże Gdańskie",              color:"#1e88e5" },
+  { name:"Pojezierze Pomorskie",           color:"#2e7d32" },
+  { name:"Pojezierze Mazurskie",           color:"#388e3c" },
+  { name:"Nizina Wielkopolska",            color:"#795548" },
+  { name:"Nizina Mazowiecka",              color:"#8d6e63" },
+  { name:"Nizina Śląska",                  color:"#6d4c41" },
+  { name:"Podlasie",                       color:"#4e342e" },
+  { name:"Wyżyna Krakowsko-Częstochowska", color:"#e64a19" },
+  { name:"Wyżyna Małopolska",              color:"#f4511e" },
+  { name:"Góry Świętokrzyskie",            color:"#b71c1c" },
 ];
+const COLOR_BY_NAME = Object.fromEntries(KRAINY_META.map(k => [k.name, k.color]));
 
-const WOJ_DO_KRAINY = {
+// Województwo (JPT_NAZWA_ lowercase) → kraina
+const WOJ_KRAINA = {
   "zachodniopomorskie":  "Pojezierze Pomorskie",
   "pomorskie":           "Pojezierze Pomorskie",
   "warmińsko-mazurskie": "Pojezierze Mazurskie",
@@ -118,6 +104,26 @@ const WOJ_DO_KRAINY = {
   "podkarpackie":        "Wyżyna Małopolska",
 };
 
+// Fallback – uproszczone poligony gdy GeoJSON niedostępny
+const FALLBACK_COORDS = {
+  "Pobrzeże Szczecińskie":          [[53.33,14.07],[53.62,14.07],[54.12,14.13],[54.37,14.28],[54.55,14.55],[54.60,15.12],[54.45,15.50],[54.17,15.53],[53.83,15.43],[53.57,15.23],[53.37,14.93],[53.28,14.45]],
+  "Pobrzeże Koszalińskie":          [[54.17,15.53],[54.45,15.50],[54.60,15.12],[54.72,15.57],[54.78,16.18],[54.82,16.88],[54.68,17.17],[54.42,17.22],[54.10,17.07],[53.90,16.68],[53.88,16.13],[53.95,15.67]],
+  "Pobrzeże Słowińskie":            [[54.42,17.22],[54.68,17.17],[54.82,16.88],[54.88,17.35],[54.92,17.90],[54.90,18.30],[54.72,18.53],[54.47,18.57],[54.22,18.40],[54.07,18.03],[54.10,17.57],[54.20,17.27]],
+  "Pobrzeże Gdańskie":              [[54.22,18.40],[54.47,18.57],[54.72,18.53],[54.87,18.30],[54.85,18.78],[54.87,19.57],[54.62,19.87],[54.27,19.92],[53.93,19.70],[53.83,19.13],[53.90,18.70],[54.07,18.40]],
+  "Pojezierze Pomorskie":           [[53.37,14.93],[53.57,15.23],[53.83,15.43],[53.95,15.67],[53.88,16.13],[53.90,16.68],[54.10,17.07],[54.20,17.27],[54.10,17.57],[54.07,18.03],[53.83,18.37],[53.57,18.40],[53.32,18.13],[53.07,17.70],[52.82,17.23],[52.63,16.63],[52.73,16.13],[52.92,15.73],[53.12,15.40],[53.23,15.12]],
+  "Pojezierze Mazurskie":           [[53.83,19.13],[53.93,19.70],[54.27,19.92],[54.62,19.87],[54.87,19.57],[54.80,20.40],[54.70,21.13],[54.43,21.63],[54.10,22.07],[53.70,22.43],[53.37,22.43],[53.12,22.07],[52.93,21.32],[52.97,20.43],[53.17,19.83],[53.40,19.43],[53.57,18.87],[53.83,18.70]],
+  "Nizina Wielkopolska":            [[52.63,16.63],[52.82,17.23],[53.07,17.70],[53.32,18.13],[53.57,18.40],[53.40,19.43],[53.17,19.83],[52.97,20.43],[52.93,21.32],[52.48,21.13],[52.18,20.67],[51.90,20.07],[51.62,19.40],[51.50,18.60],[51.53,18.00],[51.73,17.43],[51.97,16.97],[52.23,16.70],[52.43,16.47]],
+  "Nizina Mazowiecka":              [[52.93,21.32],[53.12,22.07],[53.37,22.43],[53.43,22.90],[53.20,23.07],[52.83,23.02],[52.43,22.57],[52.07,22.20],[51.73,21.73],[51.57,21.20],[51.90,20.07],[52.18,20.67],[52.48,21.13]],
+  "Nizina Śląska":                  [[52.43,16.47],[52.23,16.70],[51.97,16.97],[51.73,17.43],[51.53,18.00],[51.50,18.60],[51.30,18.53],[51.00,18.37],[50.63,18.07],[50.30,17.73],[50.07,17.43],[50.03,17.10],[50.20,16.83],[50.43,16.43],[50.73,15.97],[51.10,15.63],[51.43,15.43],[51.73,15.60],[52.07,16.03],[52.33,16.30]],
+  "Podlasie":                       [[52.43,22.57],[52.83,23.02],[53.20,23.07],[53.43,22.90],[53.70,22.43],[54.10,22.07],[54.17,22.73],[53.87,23.17],[53.43,23.50],[52.97,23.67],[52.50,23.63],[51.97,23.47],[51.57,23.07],[51.50,22.57],[51.73,21.73],[52.07,22.20]],
+  "Wyżyna Krakowsko-Częstochowska": [[51.30,18.53],[51.50,18.60],[51.40,19.20],[51.13,19.50],[50.83,19.43],[50.53,19.23],[50.23,19.00],[50.03,18.73],[49.97,18.43],[50.07,18.20],[50.23,17.97],[50.43,17.83],[50.63,18.07],[51.00,18.37]],
+  "Wyżyna Małopolska":              [[51.40,19.20],[51.50,18.60],[51.62,19.40],[51.90,20.07],[51.57,21.20],[51.33,21.67],[51.07,21.73],[50.73,21.60],[50.43,21.30],[50.20,20.93],[49.93,20.53],[49.83,20.13],[49.97,19.73],[50.20,19.50],[50.53,19.23],[50.83,19.43],[51.13,19.50]],
+  "Góry Świętokrzyskie":            [[51.13,19.50],[50.83,19.43],[50.63,19.80],[50.53,20.30],[50.63,20.73],[50.90,20.90],[51.20,20.53],[51.27,20.07]],
+};
+
+// ════════════════════════════════════════
+// RZEKI I OBIEKTY
+// ════════════════════════════════════════
 const OTHERS = [
   { name:"Wisła",  cat:"river", coords:[[49.6,20.0],[50.1,20.3],[50.6,21.0],[51.1,21.6],[51.7,21.4],[52.0,21.1],[52.6,21.1],[53.0,21.0],[53.5,19.9],[53.9,19.1],[54.4,18.7]] },
   { name:"Odra",   cat:"river", coords:[[50.3,17.9],[50.8,16.9],[51.5,16.0],[51.9,15.5],[52.3,14.9],[52.8,14.4],[53.5,14.5]] },
@@ -139,7 +145,6 @@ const OTHERS = [
   { name:"Słowiński PN",      cat:"park", lat:54.65, lng:17.45 },
   { name:"Kampinoski PN",     cat:"park", lat:52.30, lng:20.80 },
 ];
-
 const CAT_STYLE = {
   river: { color:'#1565c0', weight:5, opacity:.9 },
   sea:   { fill:'#0277bd', icon:'🌊' },
@@ -148,60 +153,127 @@ const CAT_STYLE = {
   park:  { fill:'#2e7d32', icon:'🌿' },
 };
 
+// ════════════════════════════════════════
+// STAN
+// ════════════════════════════════════════
 let map, topoLayer, osmLayer, currentTileLayer;
 let geoLayers = [];
 let quiz = [], score = 0, current = 0, answered = false;
 let autoAdvanceTimeout = null;
 let currentMode = 'krainy';
+let wojGeoJSON = null; // cache pobranych danych
 
+// ════════════════════════════════════════
+// INICJALIZACJA MAPY
+// ════════════════════════════════════════
 function initMap() {
     map = L.map('map', {
         maxBounds:[[48.3,12.8],[55.6,25.2]], maxBoundsViscosity:.85,
         minZoom:6, maxZoom:12
     }).setView([52.1,19.4], 6);
-    topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-        { attribution:'© OpenTopoMap', opacity:.85 });
-    osmLayer  = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        { attribution:'© OpenStreetMap' });
+    topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution:'© OpenTopoMap', opacity:.85 });
+    osmLayer  = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' });
     currentTileLayer = topoLayer;
     topoLayer.addTo(map);
 }
 
+// ════════════════════════════════════════
+// WARSTWY
+// ════════════════════════════════════════
 function clearGeoLayers() {
     geoLayers.forEach(l => map.removeLayer(l));
     geoLayers = [];
 }
 
-// Usuwa element <title> z SVG który przeglądarka pokazuje jako natywny tooltip
-function removeSvgTitles(layer) {
-    setTimeout(() => {
-        const el = layer.getPane ? layer.getPane() : null;
-        document.querySelectorAll('#map title').forEach(t => t.remove());
-    }, 50);
-}
-
-function addKrainaLayer(name, color, geojsonFeatures) {
+// Kluczowa funkcja – tworzy warstwę GeoJSON BEZ tooltipów
+// Leaflet wstawia <title> do każdego <path> SVG – usuwamy to przez onEachFeature
+function makeGeoLayer(features, color, krainaName) {
     const layer = L.geoJSON(
-        { type:'FeatureCollection', features: geojsonFeatures },
-        { style: { color:'#1a2e4a', weight:1.8, opacity:.85, fillColor:color, fillOpacity:.45 } }
+        { type:'FeatureCollection', features },
+        {
+            style: { color:'#1a2e4a', weight:1.8, opacity:.85, fillColor:color, fillOpacity:.45 },
+            onEachFeature: (feature, sublayer) => {
+                // Usuń <title> z SVG zaraz po dodaniu do mapy
+                sublayer.on('add', () => {
+                    const el = sublayer.getElement ? sublayer.getElement() : null;
+                    if (el) {
+                        el.querySelectorAll('title').forEach(t => t.remove());
+                        el.removeAttribute('title');
+                    }
+                    // Też przeszukaj cały kontener mapy
+                    document.querySelectorAll('#map title').forEach(t => t.remove());
+                });
+                sublayer.on('click', e => {
+                    L.DomEvent.stopPropagation(e);
+                    handleAnswer(krainaName, e.latlng);
+                });
+            }
+        }
     );
-    layer.featureName = name;
-    layer.on('click', e => { L.DomEvent.stopPropagation(e); handleAnswer(name, e.latlng); });
+    layer.featureName = krainaName;
+    layer.on('click', e => { L.DomEvent.stopPropagation(e); handleAnswer(krainaName, e.latlng); });
     layer.addTo(map);
     geoLayers.push(layer);
-    removeSvgTitles(layer);
+    // Dodatkowe czyszczenie po 200ms (gdy SVG już w DOM)
+    setTimeout(() => document.querySelectorAll('#map title').forEach(t => t.remove()), 200);
+    return layer;
 }
 
-function renderKrainy() {
-    clearGeoLayers();
-    KRAINY_DATA.forEach(k => {
-        const ring = k.coords.map(c => [c[1], c[0]]); // [lat,lng] → [lng,lat]
-        ring.push(ring[0]); // zamknij pierścień
-        addKrainaLayer(k.name, k.color, [{
-            type:'Feature', properties:{},
-            geometry:{ type:'Polygon', coordinates:[ring] }
-        }]);
+function renderKrainyFromGeoJSON(gj) {
+    // Grupuj features po krainie
+    const groups = {};
+    (gj.features || []).forEach(f => {
+        const p = f.properties || {};
+        const raw = (p.JPT_NAZWA_ || p.name || p.NAME_1 || p.VARNAME_1 || p.admin_name || '').toLowerCase().trim();
+        const kraina = WOJ_KRAINA[raw];
+        if (!kraina) return;
+        if (!groups[kraina]) groups[kraina] = [];
+        groups[kraina].push(f);
     });
+    clearGeoLayers();
+    Object.entries(groups).forEach(([kraina, features]) => {
+        makeGeoLayer(features, COLOR_BY_NAME[kraina] || '#607d8b', kraina);
+    });
+}
+
+function renderKrainyFallback() {
+    clearGeoLayers();
+    Object.entries(FALLBACK_COORDS).forEach(([name, latLngs]) => {
+        const ring = latLngs.map(c => [c[1], c[0]]); // [lat,lng]→[lng,lat]
+        ring.push(ring[0]);
+        makeGeoLayer(
+            [{ type:'Feature', properties:{}, geometry:{ type:'Polygon', coordinates:[ring] } }],
+            COLOR_BY_NAME[name] || '#607d8b',
+            name
+        );
+    });
+}
+
+async function renderKrainy() {
+    // Spróbuj pobrać prawdziwe dane – jsdelivr (CDN z CORS dla GitHub)
+    if (!wojGeoJSON) {
+        const urls = [
+            'https://cdn.jsdelivr.net/gh/waszkiewiczja/GeoJSON-Polska-Wojewodztwa-Powiaty-Gminy@main/wojewodztwa.geojson',
+            'https://cdn.jsdelivr.net/gh/andilabs/polska-wojewodztwa-geojson@master/polska-wojewodztwa.geojson',
+            'https://cdn.jsdelivr.net/gh/ppatrzyk/polska-geojson@master/wojewodztwa/wojewodztwa-min.geojson',
+        ];
+        for (const url of urls) {
+            try {
+                const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+                if (r.ok) {
+                    wojGeoJSON = await r.json();
+                    setStatus('✔ Prawdziwe granice województw załadowane', '#1b7c3f');
+                    break;
+                }
+            } catch { /* następny URL */ }
+        }
+    }
+    if (wojGeoJSON) {
+        renderKrainyFromGeoJSON(wojGeoJSON);
+    } else {
+        renderKrainyFallback();
+        setStatus('ℹ Używam uproszczonych granic (brak połączenia z serwerem GIS)', '#888');
+    }
 }
 
 function renderOthers() {
@@ -210,55 +282,38 @@ function renderOthers() {
         const st = CAT_STYLE[item.cat];
         let layer;
         if (item.cat === 'river') {
-            // shadow – nieinteraktywny, tylko wizualny
-            const shadow = L.polyline(item.coords,
-                { color:'#fff', weight:st.weight+5, opacity:.3, interactive:false });
+            const shadow = L.polyline(item.coords, { color:'#fff', weight:st.weight+5, opacity:.3, interactive:false });
             shadow.addTo(map);
             geoLayers.push(shadow);
             layer = L.polyline(item.coords, { color:st.color, weight:st.weight, opacity:st.opacity });
             layer.on('click', e => { L.DomEvent.stopPropagation(e); handleAnswer(item.name, e.latlng); });
         } else {
-            // marker bez opcji title (Leaflet dodaje natywny tooltip gdy title jest ustawiony)
             const icon = L.divIcon({
-                className: '',
-                html: `<div style="background:${st.fill};color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer">${st.icon}</div>`,
-                iconSize: [32,32], iconAnchor: [16,16]
+                className:'',
+                html:`<div style="background:${st.fill};color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer">${st.icon}</div>`,
+                iconSize:[32,32], iconAnchor:[16,16]
             });
-            layer = L.marker([item.lat, item.lng], { icon, title:'' }); // title:'' → brak natywnego tooltipa
+            layer = L.marker([item.lat, item.lng], { icon, title:'' });
             layer.on('click', e => { L.DomEvent.stopPropagation(e); handleAnswer(item.name, e.latlng); });
         }
         layer.featureName = item.name;
         layer.addTo(map);
         geoLayers.push(layer);
     });
-    // Usuń wszystkie elementy <title> z SVG po wyrenderowaniu
-    setTimeout(() => document.querySelectorAll('#map title').forEach(t => t.remove()), 100);
+    setTimeout(() => document.querySelectorAll('#map title').forEach(t => t.remove()), 200);
 }
 
-function loadExternalGeoJSON(gj) {
-    const krainaMap = {};
-    (gj.features || []).forEach(f => {
-        const p = f.properties || {};
-        const raw = p.name || p.NAME_1 || p.JPT_NAZWA_ || p.VARNAME_1 || p.admin_name || '';
-        const name = raw.toLowerCase().trim();
-        const kraina = WOJ_DO_KRAINY[name];
-        if (!kraina) return;
-        if (!krainaMap[kraina]) krainaMap[kraina] = [];
-        krainaMap[kraina].push(f);
-    });
-    if (!Object.keys(krainaMap).length) {
-        alert('Nie rozpoznano nazw województw.\nSpróbuj plik z simplemaps.com → "Download GeoJSON".');
-        return;
-    }
-    clearGeoLayers();
-    Object.entries(krainaMap).forEach(([kraina, features]) => {
-        const color = (KRAINY_DATA.find(k => k.name === kraina) || {}).color || '#607d8b';
-        addKrainaLayer(kraina, color, features);
-    });
-    document.getElementById('geojson-box').innerHTML =
-        '<b style="color:#1b7c3f">✔ Wgrano GeoJSON – mapa jest teraz dokładna!</b>';
+function setStatus(msg, color) {
+    const el = document.getElementById('status-bar');
+    el.textContent = msg;
+    el.style.color = color || '#555';
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 4000);
 }
 
+// ════════════════════════════════════════
+// QUIZ
+// ════════════════════════════════════════
 function shuffle(arr) {
     for (let i = arr.length-1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i+1));
@@ -303,9 +358,8 @@ function advanceQuestion() {
         setMode(currentMode);
         return;
     }
-    if (currentMode === 'krainy') renderKrainy();
-    else renderOthers();
-    showQuestion();
+    if (currentMode === 'krainy') renderKrainy().then(showQuestion);
+    else { renderOthers(); showQuestion(); }
 }
 
 function showQuestion() {
@@ -317,7 +371,10 @@ function showQuestion() {
     answered = false;
 }
 
-function setMode(mode) {
+// ════════════════════════════════════════
+// TRYB
+// ════════════════════════════════════════
+async function setMode(mode) {
     currentMode = mode;
     score = 0; current = 0; answered = false;
     clearTimeout(autoAdvanceTimeout);
@@ -328,23 +385,28 @@ function setMode(mode) {
     map.removeLayer(currentTileLayer);
     currentTileLayer = (mode === 'others') ? osmLayer : topoLayer;
     currentTileLayer.addTo(map);
+
     if (mode === 'krainy') {
-        renderKrainy();
-        quiz = KRAINY_DATA.map(k => k.name);
+        quiz = KRAINY_META.map(k => k.name);
+        shuffle(quiz);
+        document.getElementById('next').style.display = 'block';
+        updateLegend();
+        showQuestion();
+        await renderKrainy();
     } else {
         renderOthers();
         quiz = OTHERS.map(d => d.name);
+        shuffle(quiz);
+        document.getElementById('next').style.display = 'block';
+        updateLegend();
+        showQuestion();
     }
-    shuffle(quiz);
-    document.getElementById('next').style.display = 'block';
-    updateLegend();
-    showQuestion();
 }
 
 function updateLegend() {
     const el = document.getElementById('legend');
     if (currentMode === 'krainy') {
-        const rows = KRAINY_DATA.map(k =>
+        const rows = KRAINY_META.map(k =>
             `<span class="leg-item"><span class="dot" style="background:${k.color}"></span>${k.name}</span>`
         ).join('');
         el.innerHTML = `<b>Krainy geograficzne Polski</b><div class="leg-row">${rows}</div>`;
@@ -359,27 +421,18 @@ function updateLegend() {
     }
 }
 
+// ════════════════════════════════════════
+// START
+// ════════════════════════════════════════
 window.onload = () => {
     initMap();
     setTimeout(() => map.invalidateSize(), 200);
     setMode('krainy');
-
     document.getElementById('next').onclick = () => {
         if (!answered) return;
         clearTimeout(autoAdvanceTimeout);
         advanceQuestion();
     };
-
-    document.getElementById('geojson-file').addEventListener('change', e => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = ev => {
-            try { loadExternalGeoJSON(JSON.parse(ev.target.result)); }
-            catch (err) { alert('Błąd odczytu pliku: ' + err.message); }
-        };
-        reader.readAsText(file);
-    });
 };
 </script>
 </body>
