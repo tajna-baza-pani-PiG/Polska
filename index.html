@@ -218,46 +218,66 @@ var KRAINY = [
 // Kategorie punktów: 'sea' | 'lake' | 'peak' | 'park'
 
 var RZEKI = [
-  { name: "Wisła",  cat: "river",
-    coords: [[49.6,20.0],[50.1,20.3],[50.6,21.0],[51.1,21.6],[51.7,21.4],[52.0,21.1],[52.6,21.1],[53.0,21.0],[53.5,19.9],[53.9,19.1],[54.4,18.7]] },
+  // Wisła: źródło (Barania Góra) → ujście (Gdańsk)
+  { name: "Wisła", cat: "river",
+    coords: [[49.65,18.85],[50.05,19.95],[50.45,20.50],[50.88,21.08],[51.40,21.85],[51.75,21.45],[52.25,21.05],[52.55,21.05],[53.05,21.00],[53.50,19.90],[53.90,19.05],[54.37,18.93]] },
 
-  { name: "Odra",   cat: "river",
-    coords: [[50.3,17.9],[50.8,16.9],[51.5,16.0],[51.9,15.5],[52.3,14.9],[52.8,14.4],[53.5,14.5]] },
+  // Odra: granica czeska → Szczecin
+  { name: "Odra", cat: "river",
+    coords: [[50.33,17.92],[50.72,17.28],[51.12,16.88],[51.55,16.02],[51.93,15.53],[52.35,14.92],[52.83,14.45],[53.25,14.32],[53.55,14.55]] },
 
-  { name: "Warta",  cat: "river",
-    coords: [[50.48,19.42],[50.82,18.98],[51.08,18.65],[51.38,18.45],[51.65,18.22],[51.92,17.98],[52.18,17.55],[52.38,17.12],[52.52,16.72],[52.58,16.25],[52.60,15.68],[52.55,15.08],[52.58,14.65]] },
+  // Warta: źródło (Kromołów k. Zawiercia) → ujście do Odry (Kostrzyn n. Odrą)
+  { name: "Warta", cat: "river",
+    coords: [[50.47,19.55],[50.80,18.90],[51.05,18.55],[51.38,18.43],[51.75,18.08],[52.08,18.00],[52.40,17.58],[52.60,17.00],[52.72,16.33],[52.68,15.68],[52.62,15.08],[52.60,14.65]] },
 
-  { name: "Bug",    cat: "river",
-    coords: [[50.7,24.0],[51.3,23.6],[51.9,23.7],[52.3,23.4],[52.9,23.0],[53.1,23.6]] }
+  // Bug: granica ukraińska → ujście do Narwi (Serock)
+  { name: "Bug", cat: "river",
+    coords: [[50.75,24.05],[51.30,23.62],[51.90,23.68],[52.30,23.42],[52.90,23.00],[53.12,23.58],[52.55,21.25]] },
+
+  // Półwysep Helski – charakterystyczny kształt cypla (linia brzegowa)
+  { name: "Półwysep Helski", cat: "river",
+    coords: [[54.60,18.48],[54.63,18.60],[54.67,18.75],[54.70,18.92],[54.73,19.10],[54.75,19.28],[54.72,19.55],[54.62,19.65]] }
 ];
 
 // Styl i ikona dla każdej kategorii punktu
 var KAT_PUNKTY = {
-  sea:  { fill: "#0277bd", icon: "🌊", opis: "Morza i akweny" },
-  lake: { fill: "#29b6f6", icon: "💧", opis: "Jeziora"       },
-  peak: { fill: "#c62828", icon: "⛰",  opis: "Szczyty górskie" },
-  park: { fill: "#2e7d32", icon: "🌿", opis: "Parki Narodowe" }
+  sea:   { fill: "#0277bd", icon: "🌊", opis: "Morza i akweny"    },
+  lake:  { fill: "#29b6f6", icon: "💧", opis: "Jeziora"           },
+  peak:  { fill: "#c62828", icon: "⛰",  opis: "Szczyty górskie"   },
+  park:  { fill: "#2e7d32", icon: "🌿", opis: "Parki Narodowe"    },
+  canal: { fill: "#6a1b9a", icon: "⛵", opis: "Kanały i drogi wodne" }
 };
 
 var PUNKTY = [
-  { name: "Morze Bałtyckie",   cat: "sea",  lat: 54.80, lng: 17.50 },
+  // Morza i akweny
+  { name: "Morze Bałtyckie",   cat: "sea",  lat: 55.50, lng: 17.50 }, // w głębi morza
   { name: "Zatoka Gdańska",    cat: "sea",  lat: 54.55, lng: 18.90 },
   { name: "Zalew Szczeciński", cat: "sea",  lat: 53.80, lng: 14.50 },
   { name: "Zalew Wiślany",     cat: "sea",  lat: 54.38, lng: 19.65 },
 
+  // Jeziora
   { name: "Śniardwy",          cat: "lake", lat: 53.73, lng: 21.73 },
   { name: "Mamry",             cat: "lake", lat: 54.08, lng: 21.70 },
   { name: "Łebsko",            cat: "lake", lat: 54.72, lng: 17.40 },
+  { name: "Gopło",             cat: "lake", lat: 52.57, lng: 18.25 }, // jezioro Piastów, Kruszwica
 
+  // Szczyty
   { name: "Rysy",              cat: "peak", lat: 49.18, lng: 20.08 },
   { name: "Śnieżka",           cat: "peak", lat: 50.74, lng: 15.74 },
   { name: "Łysica",            cat: "peak", lat: 50.92, lng: 20.90 },
+  { name: "Tarnica",           cat: "peak", lat: 49.07, lng: 22.73 }, // najwyższy szczyt Bieszczadów
 
+  // Parki Narodowe
   { name: "Tatrzański PN",     cat: "park", lat: 49.25, lng: 19.95 },
   { name: "Białowieski PN",    cat: "park", lat: 52.75, lng: 23.85 },
   { name: "Biebrzański PN",    cat: "park", lat: 53.40, lng: 22.60 },
   { name: "Słowiński PN",      cat: "park", lat: 54.65, lng: 17.45 },
-  { name: "Kampinoski PN",     cat: "park", lat: 52.30, lng: 20.80 }
+  { name: "Kampinoski PN",     cat: "park", lat: 52.30, lng: 20.80 },
+  { name: "Bieszczadzki PN",   cat: "park", lat: 49.10, lng: 22.55 },
+
+  // Kanały i drogi wodne
+  { name: "Kanał Augustowski", cat: "canal", lat: 53.85, lng: 23.00 }, // łączy Wisłę z Niemnem
+  { name: "Góra Świętej Anny", cat: "peak", lat: 50.45, lng: 18.17 }  // Wyżyna Śląska, wulkan
 ];
 
 
@@ -492,9 +512,9 @@ function updateLegend(mode) {
     el.innerHTML =
       '<b>Rzeki i obiekty geograficzne Polski</b>'
       + '<div class="leg-section">'
-      + '<div class="leg-section-title">Rzeki (kliknij linię)</div>'
+      + '<div class="leg-section-title">Rzeki i linie (kliknij linię)</div>'
       + '<div class="leg-row">'
-      + '<span class="leg-item"><span class="line-sym"></span>Wisła, Odra, Warta, Bug</span>'
+      + '<span class="leg-item"><span class="line-sym"></span>Wisła, Odra, Warta, Bug, Półwysep Helski</span>'
       + '</div></div>'
       + '<div class="leg-section">'
       + '<div class="leg-section-title">Punkty (kliknij marker)</div>'
@@ -516,3 +536,4 @@ window.onload = function() {
 </script>
 </body>
 </html>
+
