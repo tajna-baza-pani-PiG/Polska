@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>Polska – Testy Geograficzne</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
@@ -50,21 +50,17 @@ const colors = {
     region:  "#8b5a2b"
 };
 
-const allFeatures = [ /* Twoja pełna lista obiektów – bez zmian */ 
-    // (wklej tutaj całą tablicę allFeatures z poprzedniej wersji)
+const allFeatures = [
+    // Wklej tutaj całą swoją listę obiektów z poprzedniej wersji (Pasy rzeźby, krainy, rzeki, jeziora, szczyty, parki itd.)
+    // Dla przykładu kilka:
     {name:"Pobrzeża", lat:54.8, lng:17.5, color:colors.coast, type:"physical"},
-    {name:"Pojezierza", lat:53.8, lng:18.5, color:colors.lowland, type:"physical"},
-    {name:"Niziny Środkowopolskie", lat:52.2, lng:19.5, color:colors.lowland, type:"physical"},
-    {name:"Wyżyny Polskie", lat:50.8, lng:20.5, color:colors.region, type:"physical"},
-    {name:"Kotliny Podkarpackie", lat:49.8, lng:22.0, color:colors.lowland, type:"physical"},
     {name:"Karpaty", lat:49.5, lng:20.0, color:colors.mountain, type:"physical"},
     {name:"Sudety", lat:50.7, lng:16.0, color:colors.mountain, type:"physical"},
-    // ... reszta obiektów (Pobrzeże Szczecińskie, Wisła, Rysy, parki itd.)
-    {name:"Morze Bałtyckie", lat:54.8, lng:18.5, color:colors.water, type:"physical"},
     {name:"Wisła", lat:52.2, lng:21.0, color:colors.river, type:"physical"},
+    {name:"Morze Bałtyckie", lat:54.8, lng:18.5, color:colors.water, type:"physical"},
     {name:"Rysy", lat:49.18, lng:20.09, color:colors.peak, type:"physical"},
     {name:"Tatrzański Park Narodowy", lat:49.25, lng:19.95, color:colors.park, type:"physical"}
-    // Dodaj wszystkie pozostałe obiekty z poprzedniej wersji
+    // ... dodaj wszystkie pozostałe
 ];
 
 let map, currentLayer;
@@ -83,12 +79,16 @@ function shuffle(array) {
 
 function initMap() {
     map = L.map('map', {
-        maxBounds: [[48.5, 13.5], [55.5, 24.5]],   // lekko poszerzone
-        maxBoundsViscosity: 0.8,                   // zmniejszona sztywność
-        minZoom: 5,                                // najważniejsze – obniżone
-        maxZoom: 11,
+        maxBounds: [[47.5, 12.0], [56.5, 25.5]],   // mocno poszerzone granice
+        maxBoundsViscosity: 0.4,                   // bardzo luźne
+        minZoom: 4,                                // mocno obniżone
+        maxZoom: 12,
+        zoomControl: true,
+        dragging: true,
         touchZoom: true,
+        doubleClickZoom: true,
         scrollWheelZoom: true,
+        tap: true,
         bounceAtZoomLimits: false
     }).setView([52.1, 19.0], 6);
 
@@ -100,9 +100,7 @@ function initMap() {
     currentLayer.addTo(map);
 }
 
-// Reszta kodu bez zmian (clearMarkers, loadMarkers, markerClick, setMode itd.)
-// ... wklej resztę funkcji z poprzedniej wersji
-
+// Reszta kodu pozostaje taka sama jak wcześniej
 function clearMarkers() {
     markers.forEach(m => map.removeLayer(m));
     markers = [];
@@ -123,7 +121,98 @@ function loadMarkers(filteredFeatures) {
     });
 }
 
-// (pozostałe funkcje: markerClick, nextQuestion, setMode, showQuestion, updateLegend – bez zmian)
+function markerClick(clickedIndex, clickedMarker, currentFeatures) {
+    if (answered) return;
+    answered = true;
+
+    clickedMarker.setRadius(16.5);
+    setTimeout(() => clickedMarker.setRadius(9.5), 180);
+
+    const correctName = quiz[current].name;
+    const isCorrect = currentFeatures[clickedIndex].name === correctName;
+
+    if (isCorrect) {
+        clickedMarker.setStyle({fillColor: "#00cc44"});
+        score++;
+        document.getElementById("question").innerHTML += " <span style='color:#00cc44'>✔</span>";
+    } else {
+        clickedMarker.setStyle({fillColor: "#cc0000"});
+        document.getElementById("question").innerHTML += " <span style='color:#cc0000'>✘</span>";
+
+        const correctIdx = currentFeatures.findIndex(f => f.name === correctName);
+        if (correctIdx !== -1) {
+            const correctMarker = markers[correctIdx];
+            const originalColor = correctMarker.options.fillColor;
+            correctMarker.setStyle({fillColor: "#00cc44", radius: 14});
+            setTimeout(() => {
+                correctMarker.setStyle({fillColor: originalColor, radius: 9.5});
+            }, 1900);
+        }
+    }
+
+    clearTimeout(autoAdvanceTimeout);
+    autoAdvanceTimeout = setTimeout(nextQuestion, 1900);
+}
+
+function nextQuestion() {
+    current++;
+    if (current >= quiz.length) {
+        alert(`Koniec testu!\nTwój wynik: ${score}/${quiz.length} 🎉`);
+        setMode(mode);
+    } else {
+        showQuestion();
+    }
+}
+
+function setMode(newMode) {
+    mode = newMode;
+    score = 0; current = 0;
+    clearTimeout(autoAdvanceTimeout);
+
+    document.querySelectorAll('.mode-buttons button').forEach((b,i) => 
+        b.classList.toggle('active', i===mode));
+
+    clearMarkers();
+
+    let filtered = mode === 0 ? allFeatures : allFeatures.filter(f => f.type === "physical");
+    let layerToUse = mode === 0 ? politicalNoLabelLayer : noLabelLayer;
+
+    if (currentLayer) map.removeLayer(currentLayer);
+    layerToUse.addTo(map);
+    currentLayer = layerToUse;
+
+    loadMarkers(filtered);
+
+    quiz = [...filtered];
+    shuffle(quiz);
+    showQuestion();
+    document.getElementById("next").style.display = "block";
+
+    updateLegend();
+}
+
+function showQuestion() {
+    document.getElementById("score").innerHTML = `Wynik: <b>${score}/${quiz.length}</b>`;
+    document.getElementById("counter").innerHTML = `Pytanie <b>${current + 1} / ${quiz.length}</b>`;
+    document.getElementById("question").innerHTML = `Wskaż: <b>${quiz[current].name}</b>`;
+    answered = false;
+
+    markers.forEach((m, i) => m.setStyle({fillColor: quiz[i].color}));
+}
+
+function updateLegend() {
+    const legend = document.getElementById("legend");
+    if (mode === 0) {
+        legend.innerHTML = `<b>Test – Obiekty geograficzne Polski</b><br>Znajdź zaznaczone obiekty`;
+    } else {
+        legend.innerHTML = `<b>Test – Mapa Fizyczna Polski</b><br>
+            <span class="color-dot" style="background:#1e4a7a"></span> Wody / Rzeki / Jeziora<br>
+            <span class="color-dot" style="background:#5c4033"></span> Góry / Szczyty<br>
+            <span class="color-dot" style="background:#4a8c3d"></span> Niziny / Pojezierza<br>
+            <span class="color-dot" style="background:#d17f2a"></span> Pobrzeża / Wybrzeże<br>
+            <span class="color-dot" style="background:#2e8b57"></span> Parki Narodowe`;
+    }
+}
 
 document.getElementById("next").onclick = nextQuestion;
 
