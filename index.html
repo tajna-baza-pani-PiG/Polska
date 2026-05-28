@@ -101,19 +101,27 @@ body {
 
 /* ── Mapa ── */
 #map {
-  /* Responsywna wysokość: duża na desktop, dostosowana na mobile */
-  height: 65vh;
-  min-height: 320px;
+  /* Zajmuje całą dostępną przestrzeń w oknie po odjęciu górnych elementów */
+  height: calc(100vh - 190px);
+  min-height: 340px;
   border-radius: 14px;
   box-shadow: 0 6px 24px rgba(0,0,0,.18);
   overflow: hidden;
 }
 
+/* Tryb krainy: mapa jeszcze wyższa bo nie ma legendy pod spodem */
+body.mode-krainy #map {
+  height: calc(100vh - 185px);
+}
+
 @media (max-width: 600px) {
   #map {
-    height: 55vw;
+    height: calc(100vh - 210px);
     min-height: 260px;
     border-radius: 10px;
+  }
+  body.mode-krainy #map {
+    height: calc(100vh - 205px);
   }
   #header h1 { font-size: 15px; }
   #question  { font-size: 16px; }
@@ -129,6 +137,7 @@ body {
   color: #4a5568;
   box-shadow: 0 1px 4px rgba(0,0,0,.06);
 }
+/* W trybie krain legenda jest ukryta (display:none ustawiane przez JS) */
 #legend b { color: #1a2e4a; display: block; margin-bottom: 8px; }
 .leg-section { margin-bottom: 10px; }
 .leg-section-title {
@@ -505,19 +514,16 @@ function setMode(mode) {
 function updateLegend(mode) {
   var el = document.getElementById('legend');
 
+  // Ustaw klasę na body do sterowania wysokością mapy
+  document.body.className = 'mode-' + mode;
+
   if (mode === 'krainy') {
-    var items = KRAINY.map(function(k) {
-      return '<span class="leg-item">'
-           + '<span class="dot" style="background:' + k.color + '"></span>'
-           + k.name + '</span>';
-    }).join('');
-    el.innerHTML =
-      '<b>Krainy geograficzne Polski</b>'
-      + '<div class="leg-section">'
-      + '<div class="leg-section-title">Kliknij zaznaczony obszar na mapie</div>'
-      + '<div class="leg-row">' + items + '</div>'
-      + '</div>';
+    // Krainy: brak legendy
+    el.style.display = 'none';
+    el.innerHTML = '';
   } else {
+    // Punkty: legenda widoczna pod mapą (dostępna po scroll)
+    el.style.display = 'block';
     var katItems = Object.keys(KAT_PUNKTY).map(function(cat) {
       var k = KAT_PUNKTY[cat];
       return '<span class="leg-item">'
