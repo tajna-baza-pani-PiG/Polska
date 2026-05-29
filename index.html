@@ -186,50 +186,61 @@ body.mode-krainy #map {
 <script>
 
 // ════════════════════════════════════════════════════════
-//  DANE – KRAINY GEOGRAFICZNE (poligony)
+//  DANE – KRAINY GEOGRAFICZNE
+//  Pobierane z oficjalnego API GDOŚ (Geoserwis) w czasie ładowania strony
 // ════════════════════════════════════════════════════════
 
-var KRAINY = [
-  { name: "Pobrzeże Szczecińskie", color: "#0d47a1",
-    coords: [[53.33,14.07],[53.62,14.07],[54.12,14.13],[54.37,14.28],[54.55,14.55],[54.60,15.12],[54.45,15.50],[54.17,15.53],[53.83,15.43],[53.57,15.23],[53.37,14.93],[53.28,14.45]] },
+// Mapowanie nazw makroregionów → kolory
+var KRAINY_COLORS = {
+  "Pobrzeże Szczecińskie":             "#0d47a1",
+  "Pobrzeże Koszalińskie":             "#1565c0",
+  "Pobrzeże Słowińskie":               "#1976d2",
+  "Żuławy Wiślane":                    "#1e88e5",
+  "Pojezierze Pomorskie":              "#2e7d32",
+  "Pojezierze Mazurskie":              "#388e3c",
+  "Nizina Wielkopolska":               "#795548",
+  "Nizina Mazowiecka":                 "#8d6e63",
+  "Nizina Śląska":                     "#6d4c41",
+  "Podlasie":                          "#4e342e",
+  "Wyżyna Krakowsko-Częstochowska":    "#e64a19",
+  "Góry Świętokrzyskie":               "#b71c1c",
+  "Wyżyna Lubelska":                   "#f4511e",
+  "Tatry":                             "#7b1fa2",
+  "Bieszczady":                        "#6a1aad"
+};
 
-  { name: "Pobrzeże Koszalińskie", color: "#1565c0",
-    coords: [[54.17,15.53],[54.45,15.50],[54.60,15.12],[54.72,15.57],[54.78,16.18],[54.82,16.88],[54.68,17.17],[54.42,17.22],[54.10,17.07],[53.90,16.68],[53.88,16.13],[53.95,15.67]] },
+// Lista krain do wyświetlenia (filtrujemy po nazwie)
+var KRAINY_NAMES = Object.keys(KRAINY_COLORS);
 
-  { name: "Pobrzeże Słowińskie", color: "#1976d2",
-    coords: [[54.42,17.22],[54.68,17.17],[54.82,16.88],[54.88,17.35],[54.92,17.90],[54.90,18.30],[54.72,18.53],[54.47,18.57],[54.22,18.40],[54.07,18.03],[54.10,17.57],[54.20,17.27]] },
+// GeoJSON załadowany z API – wypełniany asynchronicznie
+var KRAINY_GEOJSON = null;
 
-  { name: "Pobrzeże Gdańskie", color: "#1e88e5",
-    coords: [[54.22,18.40],[54.47,18.57],[54.72,18.53],[54.87,18.30],[54.85,18.78],[54.87,19.57],[54.62,19.87],[54.27,19.92],[53.93,19.70],[53.83,19.13],[53.90,18.70],[54.07,18.40]] },
+// Pobiera dane z GDOŚ WFS (makroregiony fizycznogeograficzne)
+// URL: publiczny WFS Geoserwis GDOŚ, warstwa mezoregionów/makroregionów
+function loadKrainyGeoJSON(callback) {
+  // GDOŚ udostępnia warstwy przez publiczny WFS
+  // Używamy makroregionów (poziom 4 w hierarchii Kondrackiego)
+  var wfsUrl = 'https://geoserwis.gdos.gov.pl/mapy/ows?service=WFS&version=1.1.0' +
+    '&request=GetFeature&typeName=geoserwis:makroregiony_fizycznogeograficzne' +
+    '&outputFormat=application/json&srsName=EPSG:4326';
 
-  { name: "Pojezierze Pomorskie", color: "#2e7d32",
-    coords: [[53.37,14.93],[53.57,15.23],[53.83,15.43],[53.95,15.67],[53.88,16.13],[53.90,16.68],[54.10,17.07],[54.20,17.27],[54.10,17.57],[54.07,18.03],[53.83,18.37],[53.57,18.40],[53.32,18.13],[53.07,17.70],[52.82,17.23],[52.63,16.63],[52.73,16.13],[52.92,15.73],[53.12,15.40],[53.23,15.12]] },
-
-  { name: "Pojezierze Mazurskie", color: "#388e3c",
-    coords: [[53.83,19.13],[53.93,19.70],[54.27,19.92],[54.62,19.87],[54.87,19.57],[54.80,20.40],[54.70,21.13],[54.43,21.63],[54.10,22.07],[53.70,22.43],[53.37,22.43],[53.12,22.07],[52.93,21.32],[52.97,20.43],[53.17,19.83],[53.40,19.43],[53.57,18.87],[53.83,18.70]] },
-
-  { name: "Nizina Wielkopolska", color: "#795548",
-    coords: [[52.63,16.63],[52.82,17.23],[53.07,17.70],[53.32,18.13],[53.57,18.40],[53.40,19.43],[53.17,19.83],[52.97,20.43],[52.93,21.32],[52.48,21.13],[52.18,20.67],[51.90,20.07],[51.62,19.40],[51.50,18.60],[51.53,18.00],[51.73,17.43],[51.97,16.97],[52.23,16.70],[52.43,16.47]] },
-
-  { name: "Nizina Mazowiecka", color: "#8d6e63",
-    coords: [[52.93,21.32],[53.12,22.07],[53.37,22.43],[53.43,22.90],[53.20,23.07],[52.83,23.02],[52.43,22.57],[52.07,22.20],[51.73,21.73],[51.57,21.20],[51.90,20.07],[52.18,20.67],[52.48,21.13]] },
-
-  { name: "Nizina Śląska", color: "#6d4c41",
-    coords: [[52.43,16.47],[52.23,16.70],[51.97,16.97],[51.73,17.43],[51.53,18.00],[51.50,18.60],[51.30,18.53],[51.00,18.37],[50.63,18.07],[50.30,17.73],[50.07,17.43],[50.03,17.10],[50.20,16.83],[50.43,16.43],[50.73,15.97],[51.10,15.63],[51.43,15.43],[51.73,15.60],[52.07,16.03],[52.33,16.30]] },
-
-  { name: "Podlasie", color: "#4e342e",
-    coords: [[52.43,22.57],[52.83,23.02],[53.20,23.07],[53.43,22.90],[53.70,22.43],[54.10,22.07],[54.17,22.73],[53.87,23.17],[53.43,23.50],[52.97,23.67],[52.50,23.63],[51.97,23.47],[51.57,23.07],[51.50,22.57],[51.73,21.73],[52.07,22.20]] },
-
-  { name: "Wyżyna Krakowsko-Częstochowska", color: "#e64a19",
-    coords: [[51.30,18.53],[51.50,18.60],[51.40,19.20],[51.13,19.50],[50.83,19.43],[50.53,19.23],[50.23,19.00],[50.03,18.73],[49.97,18.43],[50.07,18.20],[50.23,17.97],[50.43,17.83],[50.63,18.07],[51.00,18.37]] },
-
-  { name: "Wyżyna Małopolska", color: "#f4511e",
-    coords: [[51.40,19.20],[51.50,18.60],[51.62,19.40],[51.90,20.07],[51.57,21.20],[51.33,21.67],[51.07,21.73],[50.73,21.60],[50.43,21.30],[50.20,20.93],[49.93,20.53],[49.83,20.13],[49.97,19.73],[50.20,19.50],[50.53,19.23],[50.83,19.43],[51.13,19.50]] },
-
-  { name: "Góry Świętokrzyskie", color: "#b71c1c",
-    coords: [[51.13,19.50],[50.83,19.43],[50.63,19.80],[50.53,20.30],[50.63,20.73],[50.90,20.90],[51.20,20.53],[51.27,20.07]] }
-];
-
+  fetch(wfsUrl)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      KRAINY_GEOJSON = data;
+      callback(null, data);
+    })
+    .catch(function(err) {
+      // Fallback: spróbuj alternatywnego endpointu
+      var fallbackUrl = 'https://geoserwis.gdos.gov.pl/mapy/ows?service=WFS&version=2.0.0' +
+        '&request=GetFeature&typeNames=geoserwis:makroregiony_fizycznogeograficzne' +
+        '&outputFormat=application/json&srsName=EPSG:4326';
+      fetch(fallbackUrl)
+        .then(function(r) { return r.json(); })
+        .then(function(data) { KRAINY_GEOJSON = data; callback(null, data); })
+        .catch(function(e) { callback(e, null); });
+    });
+}
 
 // ════════════════════════════════════════════════════════
 //  DANE – RZEKI i PUNKTY
@@ -331,15 +342,41 @@ function initMap() {
   // Luźne granice – mapa "ciągnie" z powrotem do Polski, ale nie blokuje oddalenia
   map.setMaxBounds([[45.0, 8.0], [57.5, 28.0]]);
 
-  topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenTopoMap', opacity: 0.85
+  // OSM z polskimi nazwami
+  topoLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 13
   });
+
+  // Warstwa granic Polski z Geoportal GUGiK (WMS)
+  var borderLayer = L.tileLayer.wms('https://mapy.geoportal.gov.pl/wss/service/WMTS/guest/wmts/TOPO', {
+    layers: 'TOPO',
+    format: 'image/png',
+    transparent: true,
+    attribution: '&copy; GUGiK',
+    opacity: 0.0  // niewidoczna – używamy tylko OSM
+  });
+  // Nie dodajemy WMS – standardowy OSM ma granice Polski
   osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap'
   });
 
   activeTileLayer = topoLayer;
   topoLayer.addTo(map);
+
+  // Granica Polski – uproszczony obrys dla orientacji
+  var polandBorder = [
+    [54.45,18.55],[54.83,18.40],[54.38,19.55],[54.22,22.78],[54.33,23.48],
+    [53.98,23.88],[53.45,23.48],[52.52,23.60],[51.97,23.47],[50.38,22.88],
+    [49.55,22.50],[49.18,20.55],[49.07,20.22],[49.10,19.92],[49.23,18.85],
+    [49.42,18.62],[49.38,18.10],[49.48,17.52],[49.87,17.88],[50.22,17.93],
+    [50.35,16.65],[50.43,16.00],[51.00,15.00],[51.55,14.90],[52.63,14.12],
+    [53.42,14.55],[54.10,14.18],[54.55,14.60],[54.60,15.00],[54.52,15.45],
+    [54.80,16.88],[54.93,17.92],[54.45,18.55]
+  ];
+  L.polyline(polandBorder, {
+    color: '#c0392b', weight: 3, opacity: 0.9, dashArray: null
+  }).addTo(map);
 }
 
 function clearLayers() {
@@ -347,25 +384,54 @@ function clearLayers() {
   geoLayers = [];
 }
 
+// Oblicza środek ciężkości poligonu (centroid)
+function centroid(coords) {
+  var lat = 0, lng = 0;
+  for (var i = 0; i < coords.length; i++) { lat += coords[i][0]; lng += coords[i][1]; }
+  return [lat / coords.length, lng / coords.length];
+}
+
 function renderKrainy() {
   clearLayers();
-  for (var i = 0; i < KRAINY.length; i++) {
-    (function(k) {
-      var style = {
-        color: '#1a2e4a', weight: 1.8, opacity: 0.85,
-        fillColor: k.color, fillOpacity: 0.45
-      };
-      var poly = L.polygon(k.coords, style);
-      poly.featureName = k.name;
-      poly._baseStyle  = style;
-      poly.on('click', function(e) {
-        L.DomEvent.stopPropagation(e);
-        handleAnswer(k.name);
-      });
-      poly.addTo(map);
-      geoLayers.push(poly);
-    })(KRAINY[i]);
-  }
+  if (!KRAINY_GEOJSON) return;
+
+  var features = KRAINY_GEOJSON.features || [];
+  features.forEach(function(feature) {
+    // Szukamy nazwy w różnych możliwych polach
+    var props = feature.properties || {};
+    var name = props.NAZWAGLOWN || props.nazwa || props.name || props.NAZWA || '';
+
+    // Sprawdzamy czy ta kraina jest na naszej liście
+    var matchedName = null;
+    for (var i = 0; i < KRAINY_NAMES.length; i++) {
+      if (name.toLowerCase().indexOf(KRAINY_NAMES[i].toLowerCase()) >= 0 ||
+          KRAINY_NAMES[i].toLowerCase().indexOf(name.toLowerCase()) >= 0) {
+        matchedName = KRAINY_NAMES[i];
+        break;
+      }
+    }
+    if (!matchedName) return;
+
+    var color = KRAINY_COLORS[matchedName] || '#c0392b';
+    var style = {
+      color: '#1a2e4a', weight: 2, opacity: 0.9,
+      fillColor: color, fillOpacity: 0.25
+    };
+
+    var layer = L.geoJSON(feature, {
+      style: style,
+      onEachFeature: function(f, l) {
+        l.featureName = matchedName;
+        l.on('click', function(e) {
+          L.DomEvent.stopPropagation(e);
+          handleAnswer(matchedName);
+        });
+      }
+    });
+    layer.featureName = matchedName;
+    layer.addTo(map);
+    geoLayers.push(layer);
+  });
 }
 
 function renderPunkty() {
@@ -404,6 +470,16 @@ function renderPunkty() {
       });
       var marker = L.marker([p.lat, p.lng], { icon: icon });
       marker.featureName = p.name;
+      marker._correctIcon = L.divIcon({
+        className: '',
+        html: '<div style="background:#00c853;color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:3px solid #006622;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer">' + st.icon + '</div>',
+        iconSize: [32,32], iconAnchor: [16,16]
+      });
+      marker._wrongIcon = L.divIcon({
+        className: '',
+        html: '<div style="background:#ef4444;color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:3px solid #991b1b;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer">' + st.icon + '</div>',
+        iconSize: [32,32], iconAnchor: [16,16]
+      });
       marker.on('click', function(e) {
         L.DomEvent.stopPropagation(e);
         handleAnswer(p.name);
@@ -454,7 +530,19 @@ function highlightLayer(name, color) {
   for (var i = 0; i < geoLayers.length; i++) {
     var l = geoLayers[i];
     if (l.featureName !== name) continue;
-    if (l.setStyle) l.setStyle({ fillColor: color, fillOpacity: 0.78, color: color, weight: 3 });
+    if (l.setIcon) {
+      // Marker punktowy
+      var isCorrect = (color === '#00c853');
+      l.setIcon(isCorrect ? l._correctIcon : l._wrongIcon);
+    } else if (l.eachLayer) {
+      // L.geoJSON – iterujemy po sublayerach
+      l.eachLayer(function(sub) {
+        if (sub.setStyle) sub.setStyle({ fillColor: color, fillOpacity: 0.60, color: color, weight: 3 });
+      });
+    } else if (l.setStyle) {
+      // L.polyline (rzeki)
+      l.setStyle({ color: color, weight: 7, opacity: 1 });
+    }
   }
 }
 
@@ -499,7 +587,7 @@ function setMode(mode) {
 
   if (mode === 'krainy') {
     renderKrainy();
-    quiz = KRAINY.map(function(k) { return k.name; });
+    quiz = KRAINY_NAMES.slice(); // kopia listy krain
   } else {
     renderPunkty();
     quiz = RZEKI.concat(PUNKTY).map(function(o) { return o.name; });
@@ -553,8 +641,52 @@ function updateLegend(mode) {
 window.onload = function() {
   initMap();
   setTimeout(function() { map.invalidateSize(); }, 200);
-  setMode('krainy');
+
+  // Pokaż komunikat ładowania
+  document.getElementById('question').textContent = '⏳ Ładowanie granic krain geograficznych...';
+
+  // Załaduj dane GeoJSON z GDOŚ
+  loadKrainyGeoJSON(function(err, data) {
+    if (err || !data || !data.features || data.features.length === 0) {
+      // Jeśli API niedostępne – uruchom z uproszczonymi danymi
+      console.warn('GDOŚ API niedostępne, używam danych uproszczonych:', err);
+      KRAINY_GEOJSON = buildFallbackGeoJSON();
+    }
+    setMode('krainy');
+  });
 };
+
+// Dane zapasowe (uproszczone poligony) gdy API jest niedostępne
+function buildFallbackGeoJSON() {
+  var fallback = [
+    { name: "Pobrzeże Szczecińskie",          coords: [[[14.12,53.35],[14.10,53.55],[14.18,54.00],[14.32,54.33],[14.60,54.52],[15.00,54.60],[15.45,54.52],[15.55,54.22],[15.45,53.92],[15.28,53.68],[14.95,53.45],[14.50,53.32],[14.12,53.35]]] },
+    { name: "Pobrzeże Koszalińskie",           coords: [[[15.55,54.22],[15.45,54.52],[15.00,54.60],[15.55,54.70],[16.22,54.77],[16.88,54.80],[17.12,54.68],[17.18,54.43],[17.05,54.15],[16.65,53.95],[16.10,53.92],[15.68,53.98],[15.55,54.22]]] },
+    { name: "Pobrzeże Słowińskie",             coords: [[[17.18,54.43],[17.12,54.68],[16.88,54.80],[17.38,54.88],[17.92,54.93],[18.30,54.92],[18.50,54.75],[18.55,54.50],[18.35,54.30],[18.00,54.12],[17.53,54.15],[17.25,54.23],[17.18,54.43]]] },
+    { name: "Żuławy Wiślane",                  coords: [[[18.35,54.30],[18.55,54.50],[18.50,54.75],[18.92,54.72],[19.28,54.55],[19.55,54.35],[19.60,54.18],[19.42,54.00],[19.08,53.90],[18.78,54.03],[18.62,54.17],[18.35,54.30]]] },
+    { name: "Pojezierze Pomorskie",            coords: [[[14.95,53.45],[15.28,53.68],[15.45,53.92],[15.68,53.98],[16.10,53.92],[16.65,53.95],[17.05,54.15],[17.25,54.23],[17.53,54.15],[18.00,54.12],[18.32,53.88],[18.35,53.62],[18.08,53.38],[17.65,53.13],[17.18,52.88],[16.60,52.68],[16.08,52.78],[15.70,52.95],[15.35,53.15],[15.08,53.27],[14.95,53.45]]] },
+    { name: "Pojezierze Mazurskie",            coords: [[[19.08,53.90],[19.42,54.00],[19.60,54.18],[19.55,54.35],[19.28,54.55],[18.92,54.72],[19.38,54.82],[20.40,54.80],[21.12,54.68],[21.62,54.42],[22.03,54.12],[22.38,53.72],[22.38,53.38],[22.03,53.13],[21.28,52.95],[20.40,52.98],[19.80,53.18],[19.38,53.42],[18.82,53.60],[18.70,53.88],[19.08,53.90]]] },
+    { name: "Nizina Wielkopolska",             coords: [[[16.60,52.68],[17.18,52.88],[17.65,53.13],[18.08,53.38],[18.35,53.62],[19.38,53.42],[19.80,53.18],[20.40,52.98],[21.28,52.95],[21.08,52.50],[20.63,52.20],[20.03,51.92],[19.35,51.63],[18.55,51.52],[17.98,51.52],[17.40,51.72],[16.95,51.97],[16.68,52.22],[16.45,52.43],[16.60,52.68]]] },
+    { name: "Nizina Mazowiecka",               coords: [[[21.28,52.95],[22.03,53.13],[22.38,53.38],[22.87,53.43],[23.05,53.22],[23.00,52.85],[22.53,52.45],[22.15,52.10],[21.68,51.75],[21.15,51.60],[19.35,51.63],[20.03,51.92],[20.63,52.20],[21.08,52.50],[21.28,52.95]]] },
+    { name: "Nizina Śląska",                   coords: [[[15.60,51.42],[16.03,51.72],[16.35,52.00],[16.68,52.22],[16.95,51.97],[17.40,51.72],[17.98,51.52],[18.45,51.50],[18.35,51.15],[18.08,50.85],[17.78,50.55],[17.32,50.18],[16.88,49.95],[16.42,50.05],[15.98,50.30],[15.55,50.72],[15.32,51.12],[15.45,51.42],[15.60,51.42]]] },
+    { name: "Podlasie",                        coords: [[[22.53,52.45],[23.00,52.85],[23.05,53.22],[22.87,53.43],[22.38,53.72],[22.03,54.12],[22.70,54.18],[23.13,53.88],[23.47,53.45],[23.63,53.00],[23.60,52.52],[23.43,52.00],[23.03,51.62],[22.53,51.55],[21.68,51.75],[22.15,52.10],[22.53,52.45]]] },
+    { name: "Wyżyna Krakowsko-Częstochowska",  coords: [[[18.50,51.30],[18.55,51.50],[19.18,51.40],[19.45,51.15],[19.38,50.85],[19.18,50.55],[18.95,50.28],[18.68,50.05],[18.38,49.98],[18.15,50.08],[17.92,50.27],[17.78,50.45],[17.95,50.65],[18.15,50.85],[18.35,51.15],[18.50,51.30]]] },
+    { name: "Góry Świętokrzyskie",             coords: [[[19.45,51.15],[20.03,51.28],[20.48,51.22],[20.85,50.92],[20.70,50.65],[20.25,50.55],[19.78,50.65],[19.38,50.85],[19.45,51.15]]] },
+    { name: "Wyżyna Lubelska",                 coords: [[[21.72,51.55],[22.55,51.60],[23.03,51.62],[23.58,51.40],[23.35,50.95],[23.25,50.65],[22.88,50.38],[22.40,50.22],[21.93,50.35],[21.25,50.45],[20.88,50.65],[20.85,50.92],[20.48,51.22],[20.58,51.50],[21.15,51.58],[21.72,51.55]]] },
+    { name: "Tatry",                           coords: [[[19.70,49.43],[19.87,49.48],[20.12,49.52],[20.40,49.50],[20.57,49.42],[20.68,49.27],[20.55,49.12],[20.22,49.07],[19.92,49.10],[19.70,49.20],[19.60,49.32],[19.70,49.43]]] },
+    { name: "Bieszczady",                      coords: [[[21.82,49.52],[22.12,49.57],[22.50,49.52],[22.87,49.42],[22.90,49.22],[22.60,49.07],[22.22,49.05],[21.93,49.15],[21.75,49.32],[21.70,49.47],[21.82,49.52]]] }
+  ];
+
+  return {
+    type: 'FeatureCollection',
+    features: fallback.map(function(k) {
+      return {
+        type: 'Feature',
+        properties: { NAZWAGLOWN: k.name },
+        geometry: { type: 'Polygon', coordinates: k.coords }
+      };
+    })
+  };
+}
 </script>
 </body>
 </html>
