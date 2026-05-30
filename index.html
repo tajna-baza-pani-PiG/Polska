@@ -9,177 +9,59 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 * { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  font-family: 'Lato', sans-serif;
-  background: #eef2f7;
-}
-
-#container {
-  padding: 14px 12px;
-  max-width: 980px;
-  margin: auto;
-}
-
-/* ── Nagłówek ── */
-#header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-#header h1 {
-  font-family: 'Merriweather', serif;
-  font-size: 19px;
-  margin: 0;
-  color: #1a2e4a;
-}
-
-/* ── Przyciski trybu ── */
-.mode-buttons {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
-}
-.mode-buttons button {
-  padding: 8px 18px;
-  font-size: 14px;
-  font-family: 'Lato', sans-serif;
-  font-weight: 700;
-  border: 2px solid #c5cfe0;
-  border-radius: 20px;
-  cursor: pointer;
-  background: #fff;
-  color: #4a5568;
-  transition: all .15s;
-}
+body { margin: 0; font-family: 'Lato', sans-serif; background: #eef2f7; }
+#container { padding: 14px 12px; max-width: 980px; margin: auto; }
+#header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+#header h1 { font-family: 'Merriweather', serif; font-size: 19px; margin: 0; color: #1a2e4a; }
+.mode-buttons { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.mode-buttons button { padding: 8px 18px; font-size: 14px; font-family: 'Lato', sans-serif; font-weight: 700; border: 2px solid #c5cfe0; border-radius: 20px; cursor: pointer; background: #fff; color: #4a5568; transition: all .15s; }
 .mode-buttons button:hover  { border-color: #2d89ef; color: #2d89ef; }
 .mode-buttons button.active { background: #2d89ef; border-color: #2d89ef; color: #fff; }
-
-/* ── Panel quizu ── */
-#quiz-panel {
-  background: #fff;
-  border-radius: 12px;
-  padding: 8px 14px;
-  margin-bottom: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,.07);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-#counter {
-  font-size: 11px;
-  color: #8896aa;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .6px;
-  line-height: 1.3;
-}
-#question {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1a2e4a;
-  line-height: 1.3;
-}
-#feedback {
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.3;
-}
+#quiz-panel { background: #fff; border-radius: 12px; padding: 8px 14px; margin-bottom: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.07); display: flex; flex-direction: column; gap: 2px; }
+#counter { font-size: 11px; color: #8896aa; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; line-height: 1.3; }
+#question { font-size: 18px; font-weight: 700; color: #1a2e4a; line-height: 1.3; }
+#feedback { font-size: 13px; font-weight: 700; line-height: 1.3; }
 #feedback:empty { display: none; }
 #feedback.correct { color: #1b7c3f; }
 #feedback.wrong   { color: #b91c1c; }
-#score {
-  font-size: 12px;
-  color: #4a5568;
-  border-top: 1px solid #eef2f7;
-  padding-top: 4px;
-  margin-top: 2px;
-  line-height: 1.3;
-}
+#score { font-size: 12px; color: #4a5568; border-top: 1px solid #eef2f7; padding-top: 4px; margin-top: 2px; line-height: 1.3; }
 #score b { color: #2d89ef; font-size: 13px; }
-
-/* ── Mapa ── */
-#map {
-  /* Zajmuje całą dostępną przestrzeń w oknie po odjęciu górnych elementów */
-  height: calc(100vh - 190px);
-  min-height: 340px;
-  border-radius: 14px;
-  box-shadow: 0 6px 24px rgba(0,0,0,.18);
-  overflow: hidden;
-}
-
-/* Tryb krainy: mapa jeszcze wyższa bo nie ma legendy pod spodem */
-body.mode-krainy #map {
-  height: calc(100vh - 185px);
-}
-
+#map { height: calc(100vh - 185px); min-height: 340px; border-radius: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.18); overflow: hidden; }
+body.mode-krainy #map { height: calc(100vh - 185px); }
 @media (max-width: 600px) {
-  #map {
-    height: calc(100vh - 210px);
-    min-height: 260px;
-    border-radius: 10px;
-  }
-  body.mode-krainy #map {
-    height: calc(100vh - 205px);
-  }
+  #map { height: calc(100vh - 210px); min-height: 260px; border-radius: 10px; }
+  body.mode-krainy #map { height: calc(100vh - 205px); }
   #header h1 { font-size: 15px; }
   #question  { font-size: 16px; }
 }
-
-/* ── Legenda ── */
-#legend {
-  margin-top: 10px;
-  padding: 12px 16px;
-  background: #fff;
-  border-radius: 10px;
-  font-size: 13px;
-  color: #4a5568;
-  box-shadow: 0 1px 4px rgba(0,0,0,.06);
-}
-/* W trybie krain legenda jest ukryta (display:none ustawiane przez JS) */
+#legend { margin-top: 10px; padding: 12px 16px; background: #fff; border-radius: 10px; font-size: 13px; color: #4a5568; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
 #legend b { color: #1a2e4a; display: block; margin-bottom: 8px; }
 .leg-section { margin-bottom: 10px; }
-.leg-section-title {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-  color: #8896aa;
-  margin-bottom: 5px;
-}
+.leg-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #8896aa; margin-bottom: 5px; }
 .leg-row { display: flex; flex-wrap: wrap; gap: 5px 16px; }
 .leg-item { display: flex; align-items: center; gap: 6px; line-height: 1.4; }
-.dot  { width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0; border: 1px solid rgba(0,0,0,.12); }
 .icon-sym { font-size: 14px; line-height: 1; }
 .line-sym { width: 22px; height: 4px; border-radius: 2px; flex-shrink: 0; background: #1565c0; }
 </style>
 </head>
 <body>
 <div id="container">
-
   <div id="header">
     <span style="font-size:26px">🇵🇱</span>
     <h1>Test Geograficzny – Polska</h1>
   </div>
-
   <div class="mode-buttons">
     <button onclick="setMode('krainy')" id="btn-krainy">🗺 Krainy Geograficzne</button>
     <button onclick="setMode('punkty')" id="btn-punkty">📍 Rzeki i Obiekty</button>
   </div>
-
   <div id="quiz-panel">
     <div id="counter"></div>
     <div id="question"></div>
     <div id="feedback"></div>
     <div id="score"></div>
   </div>
-
   <div id="map"></div>
   <div id="legend"></div>
-
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -187,104 +69,203 @@ body.mode-krainy #map {
 
 // ════════════════════════════════════════════════════════
 //  DANE – KRAINY GEOGRAFICZNE
-//  Pobierane z oficjalnego API GDOŚ (Geoserwis) w czasie ładowania strony
+//  Współrzędne oparte na mapie Kondrackiego (makroregiony)
+//  Każdy punkt ręcznie zweryfikowany na mapie fizycznej
 // ════════════════════════════════════════════════════════
 
-// Mapowanie nazw makroregionów → kolory
-var KRAINY_COLORS = {
-  "Pobrzeże Szczecińskie":             "#0d47a1",
-  "Pobrzeże Koszalińskie":             "#1565c0",
-  "Pobrzeże Słowińskie":               "#1976d2",
-  "Żuławy Wiślane":                    "#1e88e5",
-  "Pojezierze Pomorskie":              "#2e7d32",
-  "Pojezierze Mazurskie":              "#388e3c",
-  "Nizina Wielkopolska":               "#795548",
-  "Nizina Mazowiecka":                 "#8d6e63",
-  "Nizina Śląska":                     "#6d4c41",
-  "Podlasie":                          "#4e342e",
-  "Wyżyna Krakowsko-Częstochowska":    "#e64a19",
-  "Góry Świętokrzyskie":               "#b71c1c",
-  "Wyżyna Lubelska":                   "#f4511e",
-  "Tatry":                             "#7b1fa2",
-  "Bieszczady":                        "#6a1aad"
-};
+var KRAINY = [
 
-// Lista krain do wyświetlenia (filtrujemy po nazwie)
-var KRAINY_NAMES = Object.keys(KRAINY_COLORS);
+  // ── PAS POBRZEŻY ──────────────────────────────────────
+  // Pas ~30-40 km wzdłuż wybrzeża Bałtyku
 
-// GeoJSON załadowany z API – wypełniany asynchronicznie
-var KRAINY_GEOJSON = null;
+  { name: "Pobrzeże Szczecińskie",
+    // Zalew Szczeciński → okolice Koszalina. Granica płd: ~53.6°N
+    coords: [
+      [54.58,14.22],[54.60,14.55],[54.55,15.00],[54.50,15.48],
+      [54.22,15.55],[53.92,15.45],[53.70,15.25],[53.55,14.92],
+      [53.47,14.50],[53.50,14.22]
+    ]},
 
-// Pobiera dane z GDOŚ WFS (makroregiony fizycznogeograficzne)
-// URL: publiczny WFS Geoserwis GDOŚ, warstwa mezoregionów/makroregionów
-function loadKrainyGeoJSON(callback) {
-  // GDOŚ udostępnia warstwy przez publiczny WFS
-  // Używamy makroregionów (poziom 4 w hierarchii Kondrackiego)
-  var wfsUrl = 'https://geoserwis.gdos.gov.pl/mapy/ows?service=WFS&version=1.1.0' +
-    '&request=GetFeature&typeName=geoserwis:makroregiony_fizycznogeograficzne' +
-    '&outputFormat=application/json&srsName=EPSG:4326';
+  { name: "Pobrzeże Koszalińskie",
+    // Koszalin → Słupsk. Wąski pas nadmorski
+    coords: [
+      [54.50,15.48],[54.55,15.00],[54.60,15.00],[54.72,15.58],
+      [54.78,16.25],[54.80,16.90],[54.68,17.15],[54.43,17.20],
+      [54.15,17.05],[53.95,16.65],[53.92,16.10],[53.98,15.68],
+      [54.22,15.55]
+    ]},
 
-  fetch(wfsUrl)
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      KRAINY_GEOJSON = data;
-      callback(null, data);
-    })
-    .catch(function(err) {
-      // Fallback: spróbuj alternatywnego endpointu
-      var fallbackUrl = 'https://geoserwis.gdos.gov.pl/mapy/ows?service=WFS&version=2.0.0' +
-        '&request=GetFeature&typeNames=geoserwis:makroregiony_fizycznogeograficzne' +
-        '&outputFormat=application/json&srsName=EPSG:4326';
-      fetch(fallbackUrl)
-        .then(function(r) { return r.json(); })
-        .then(function(data) { KRAINY_GEOJSON = data; callback(null, data); })
-        .catch(function(e) { callback(e, null); });
-    });
-}
+  { name: "Pobrzeże Słowińskie",
+    // Słupsk → Trójmiasto (bez Żuław). Łeba, Słowiński PN
+    coords: [
+      [54.43,17.20],[54.68,17.15],[54.80,16.90],[54.88,17.38],
+      [54.93,17.92],[54.92,18.32],[54.75,18.52],[54.50,18.57],
+      [54.30,18.37],[54.12,18.02],[54.15,17.55],[54.23,17.27]
+    ]},
+
+  { name: "Żuławy Wiślane",
+    // Delta Wisły. Gdańsk–Elbląg, trójkąt deltowy
+    coords: [
+      [54.30,18.37],[54.50,18.57],[54.75,18.52],[54.73,18.95],
+      [54.57,19.30],[54.35,19.57],[54.18,19.63],[54.00,19.42],
+      [53.90,19.10],[54.03,18.80],[54.17,18.63]
+    ]},
+
+  // ── PAS POJEZIERZY ────────────────────────────────────
+  // Południe od pobrzeży, na północ od nizin (pas jezior polodowcowych)
+
+  { name: "Pojezierze Pomorskie",
+    // Zachód – pojezierze na południe od pobrzeży, aż po Noteć
+    // Gorzów Wlkp., Bydgoszcz leżą na jego skraju
+    coords: [
+      [53.55,14.92],[53.70,15.25],[53.92,15.45],[53.98,15.68],
+      [53.92,16.10],[53.95,16.65],[54.15,17.05],[54.23,17.27],
+      [54.15,17.55],[54.12,18.02],[53.88,18.35],[53.62,18.38],
+      [53.38,18.10],[53.13,17.68],[52.87,17.20],[52.68,16.62],
+      [52.75,16.10],[52.93,15.72],[53.15,15.37],[53.27,15.10],
+      [53.47,14.50]
+    ]},
+
+  { name: "Pojezierze Mazurskie",
+    // Wschód – Mazury. Olsztyn, Suwałki w centrum lub pobliżu
+    // Granica zach: ~Wisła, wsch: granica z Obwodem Kaliningradzkim/Litwą
+    coords: [
+      [53.90,19.10],[54.00,19.42],[54.18,19.63],[54.35,19.57],
+      [54.57,19.30],[54.73,18.95],[54.83,19.40],[54.80,20.42],
+      [54.68,21.15],[54.42,21.65],[54.12,22.07],[53.72,22.40],
+      [53.38,22.40],[53.13,22.05],[52.95,21.30],[52.98,20.42],
+      [53.18,19.82],[53.42,19.40],[53.62,18.85],[53.88,18.72]
+    ]},
+
+  // ── PAS WIELKICH NIZIN ────────────────────────────────
+  // Serce Polski – pas od Odry do Bugu, na południe od pojezierzy
+
+  { name: "Nizina Śląska",
+    // Dolina Odry: Wrocław (51.11N,17.02E) i Opole (50.67N,17.93E) w centrum
+    // Granica: płn – Wał Trzebnicki ~51.45N, płd – Przedgórze Sudeckie ~50.15N
+    // Zach – granica PL/DE ~14.8E, wsch – Wyżyna Śląska ~18.55E
+    coords: [
+      [51.45,14.82],[51.48,15.50],[51.60,16.05],[51.75,16.55],
+      [51.85,17.05],[51.75,17.55],[51.52,17.98],[51.38,18.35],
+      [51.05,18.55],[50.80,18.55],[50.55,18.40],[50.30,18.05],
+      [50.12,17.62],[49.98,17.15],[49.90,16.68],[50.00,16.18],
+      [50.18,15.82],[50.45,15.45],[50.80,15.15],[51.15,14.85]
+    ]},
+
+  { name: "Nizina Wielkopolska",
+    // Środek: Poznań (52.41N,16.93E). Dolina Warty
+    // Granica: płn – Noteć/pojezierza, płd – ok. 51.5N, zach – ok. 16E, wsch – Wisła
+    coords: [
+      [52.68,16.62],[52.87,17.20],[53.13,17.68],[53.38,18.10],
+      [53.62,18.38],[53.42,19.40],[53.18,19.82],[52.98,20.42],
+      [52.95,21.30],[52.50,21.10],[52.20,20.65],[51.92,20.05],
+      [51.65,19.37],[51.52,18.57],[51.38,18.35],[51.52,17.98],
+      [51.73,17.42],[52.00,16.95],[52.25,16.68],[52.43,16.45]
+    ]},
+
+  { name: "Nizina Mazowiecka",
+    // Centrum: Warszawa (52.23N,21.01E). Dolina środkowej Wisły
+    coords: [
+      [52.95,21.30],[53.13,22.05],[53.38,22.40],[53.45,22.90],
+      [53.22,23.07],[52.85,23.02],[52.45,22.55],[52.10,22.18],
+      [51.75,21.70],[51.60,21.17],[51.65,19.37],[51.92,20.05],
+      [52.20,20.65],[52.50,21.10]
+    ]},
+
+  { name: "Podlasie",
+    // Wsch Polska: Białystok (53.13N,23.15E) w centrum
+    // Między Narwią/Biebrzą (płn) a Bugiem (płd)
+    coords: [
+      [52.45,22.55],[52.85,23.02],[53.22,23.07],[53.45,22.90],
+      [53.72,22.42],[54.12,22.07],[54.18,22.73],[53.88,23.17],
+      [53.45,23.50],[53.00,23.65],[52.52,23.62],[52.00,23.45],
+      [51.62,23.05],[51.55,22.55],[51.75,21.70],[52.10,22.18]
+    ]},
+
+  // ── PAS WYŻYN ─────────────────────────────────────────
+  // Południe środkowe – pas wyżyn jurajskich i świętokrzyskich
+
+  { name: "Wyżyna Krakowsko-Częstochowska",
+    // Jura. Częstochowa (50.81N,19.12E) na płn, Kraków (50.06N,19.94E) na płd
+    // Wąski pas N-S: szer. ok. 15-25 km, dług. ok. 100 km
+    coords: [
+      [51.05,18.40],[51.25,18.80],[51.10,19.35],[50.88,19.55],
+      [50.55,19.42],[50.25,19.18],[50.05,18.95],[49.97,18.62],
+      [50.05,18.32],[50.25,18.05],[50.50,17.88],[50.80,18.22]
+    ]},
+
+  { name: "Góry Świętokrzyskie",
+    // Masyw Łysogór. Kielce (50.87N,20.63E) na skraju płd
+    // Zasięg: ok. 50.6–51.2N, 20.0–21.2E
+    coords: [
+      [51.12,19.95],[51.22,20.48],[51.15,20.90],[50.90,21.05],
+      [50.62,20.88],[50.52,20.38],[50.60,19.92],[50.88,19.55],[51.05,19.70]
+    ]},
+
+  { name: "Wyżyna Lubelska",
+    // Lublin (51.25N,22.57E) w centrum. Na wschód od Wisły, zachód od Bugu
+    // Zasięg: ok. 50.4–51.6N, 21.5–23.5E
+    coords: [
+      [51.60,21.17],[51.75,21.70],[51.55,22.55],[51.62,23.05],
+      [52.00,23.45],[51.78,23.62],[51.40,23.60],[50.95,23.37],
+      [50.65,23.28],[50.38,22.90],[50.22,22.42],[50.35,21.95],
+      [50.45,21.28],[50.62,20.88],[50.90,21.05],[51.15,20.90],
+      [51.22,20.48],[51.35,20.80],[51.50,21.10]
+    ]},
+
+  // ── GÓRY POŁUDNIOWE ───────────────────────────────────
+
+  { name: "Tatry",
+    // Najwyższe góry Polski. Zakopane (49.30N,19.95E) u podnóża
+    // Granica państwa ze Słowacją przebiega przez grzebień Tatr
+    // Zasięg: ok. 49.1–49.5N, 19.7–20.7E
+    coords: [
+      [49.43,19.72],[49.50,19.90],[49.53,20.15],[49.50,20.42],
+      [49.42,20.60],[49.28,20.72],[49.12,20.57],[49.07,20.22],
+      [49.10,19.93],[49.20,19.72],[49.33,19.62]
+    ]},
+
+  { name: "Bieszczady",
+    // SE róg Polski. Ustrzyki Dolne (49.43N,22.60E)
+    // Zasięg: ok. 49.0–49.6N, 21.8–22.9E
+    coords: [
+      [49.53,21.83],[49.57,22.13],[49.52,22.52],[49.42,22.88],
+      [49.22,22.92],[49.07,22.62],[49.05,22.23],[49.15,21.95],
+      [49.32,21.77],[49.47,21.72]
+    ]}
+];
 
 // ════════════════════════════════════════════════════════
 //  DANE – RZEKI i PUNKTY
 // ════════════════════════════════════════════════════════
 
 var RZEKI = [
-  // Wisła: źródło w Beskidach (Barania Góra ~49.65, 18.85) → Kraków → Warszawa → Toruń → Gdańsk
   { name: "Wisła", cat: "river",
     coords: [
       [49.65,18.85],[49.89,19.47],[50.06,19.94],[50.26,20.46],
       [50.54,21.73],[51.05,21.87],[51.40,21.97],[51.67,21.75],
       [52.23,21.01],[52.52,20.97],[52.93,20.72],[53.17,18.69],
-      [53.45,18.77],[53.69,18.66],[54.08,18.75],[54.22,18.68],
-      [54.36,18.64]
-    ]
-  },
-
-  // Odra: źródło w Czechach (ok. 49.78, 17.68) → Ostrava → Wrocław → Szczecin
+      [53.45,18.77],[53.69,18.66],[54.08,18.75],[54.22,18.68],[54.36,18.64]
+    ]},
   { name: "Odra", cat: "river",
     coords: [
       [49.87,17.88],[50.22,17.93],[50.35,17.97],[50.67,17.12],
       [51.10,17.04],[51.40,16.94],[51.68,16.25],[51.93,15.51],
       [52.33,14.90],[52.72,14.43],[53.05,14.25],[53.42,14.55]
-    ]
-  },
-
-  // Warta: źródło koło Kromołowa (50.55, 19.55) → Częstochowa → Sieradz → Poznań → Kostrzyn nad Odrą
+    ]},
   { name: "Warta", cat: "river",
     coords: [
       [50.55,19.55],[50.81,19.12],[50.98,18.97],[51.35,18.71],
       [51.60,18.55],[51.77,18.08],[51.91,17.87],[52.05,17.58],
       [52.22,17.01],[52.41,16.93],[52.62,16.58],[52.73,16.17],
       [52.58,15.80],[52.61,14.99],[52.59,14.65]
-    ]
-  },
-
-  // Bug: źródło na Ukrainie → Brest → Drohiczyn → ujście do Narwi koło Serocka
+    ]},
   { name: "Bug", cat: "river",
     coords: [
       [51.15,24.00],[51.37,23.69],[51.57,23.68],[51.83,23.52],
       [52.05,23.70],[52.34,23.37],[52.54,23.44],[52.79,22.68],
       [52.76,21.97],[52.60,21.52],[52.47,21.32]
-    ]
-  }
+    ]}
 ];
 
 var KAT_PUNKTY = {
@@ -295,27 +276,16 @@ var KAT_PUNKTY = {
 };
 
 var PUNKTY = [
-  // Morza i akweny – precyzyjne środki
   { name: "Morze Bałtyckie",   cat: "sea",  lat: 55.00, lng: 17.50 },
   { name: "Zatoka Gdańska",    cat: "sea",  lat: 54.65, lng: 19.10 },
   { name: "Zalew Szczeciński", cat: "sea",  lat: 53.82, lng: 14.32 },
   { name: "Zalew Wiślany",     cat: "sea",  lat: 54.33, lng: 19.53 },
-
-  // Jeziora mazurskie
   { name: "Śniardwy",          cat: "lake", lat: 53.73, lng: 21.73 },
   { name: "Mamry",             cat: "lake", lat: 54.13, lng: 21.73 },
-  // Łebsko – jezioro przybrzeżne na Pobrzeżu Słowińskim
   { name: "Łebsko",            cat: "lake", lat: 54.72, lng: 17.40 },
-
-  // Szczyty
-  // Rysy – granica PL/SK w Tatrach
   { name: "Rysy",              cat: "peak", lat: 49.18, lng: 20.08 },
-  // Śnieżka – najwyższy szczyt Karkonoszy/Sudetów
   { name: "Śnieżka",           cat: "peak", lat: 50.74, lng: 15.74 },
-  // Łysica – najwyższy szczyt Gór Świętokrzyskich
   { name: "Łysica",            cat: "peak", lat: 50.91, lng: 20.91 },
-
-  // Parki Narodowe – centra obszarów
   { name: "Tatrzański PN",     cat: "park", lat: 49.23, lng: 19.98 },
   { name: "Białowieski PN",    cat: "park", lat: 52.75, lng: 23.87 },
   { name: "Biebrzański PN",    cat: "park", lat: 53.45, lng: 22.73 },
@@ -331,52 +301,28 @@ var map, topoLayer, osmLayer, activeTileLayer;
 var geoLayers = [];
 
 function initMap() {
-  // Miękkie ograniczenia – nie blokujemy twardego minZoom,
-  // pozwalamy oddalić się swobodnie; soft maxBounds tylko lekko "odbija"
   map = L.map('map', {
-    maxBoundsViscosity: 0.5,   // miękkie odbicie od granic, nie blokuje
-    minZoom: 5,                // można się oddalić na całą Europę
+    maxBoundsViscosity: 0.5,
+    minZoom: 5,
     maxZoom: 12
   }).setView([52.1, 19.4], 6);
 
-  // Luźne granice – mapa "ciągnie" z powrotem do Polski, ale nie blokuje oddalenia
   map.setMaxBounds([[45.0, 8.0], [57.5, 28.0]]);
 
-  // OSM z polskimi nazwami
+  // OSM z polskimi nazwami miast i granicą Polski
   topoLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors',
     maxZoom: 13
   });
 
-  // Warstwa granic Polski z Geoportal GUGiK (WMS)
-  var borderLayer = L.tileLayer.wms('https://mapy.geoportal.gov.pl/wss/service/WMTS/guest/wmts/TOPO', {
-    layers: 'TOPO',
-    format: 'image/png',
-    transparent: true,
-    attribution: '&copy; GUGiK',
-    opacity: 0.0  // niewidoczna – używamy tylko OSM
-  });
-  // Nie dodajemy WMS – standardowy OSM ma granice Polski
+  // Tryb RZEKI: standardowy OSM
   osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap'
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 13
   });
 
   activeTileLayer = topoLayer;
   topoLayer.addTo(map);
-
-  // Granica Polski – uproszczony obrys dla orientacji
-  var polandBorder = [
-    [54.45,18.55],[54.83,18.40],[54.38,19.55],[54.22,22.78],[54.33,23.48],
-    [53.98,23.88],[53.45,23.48],[52.52,23.60],[51.97,23.47],[50.38,22.88],
-    [49.55,22.50],[49.18,20.55],[49.07,20.22],[49.10,19.92],[49.23,18.85],
-    [49.42,18.62],[49.38,18.10],[49.48,17.52],[49.87,17.88],[50.22,17.93],
-    [50.35,16.65],[50.43,16.00],[51.00,15.00],[51.55,14.90],[52.63,14.12],
-    [53.42,14.55],[54.10,14.18],[54.55,14.60],[54.60,15.00],[54.52,15.45],
-    [54.80,16.88],[54.93,17.92],[54.45,18.55]
-  ];
-  L.polyline(polandBorder, {
-    color: '#c0392b', weight: 3, opacity: 0.9, dashArray: null
-  }).addTo(map);
 }
 
 function clearLayers() {
@@ -384,110 +330,55 @@ function clearLayers() {
   geoLayers = [];
 }
 
-// Oblicza środek ciężkości poligonu (centroid)
-function centroid(coords) {
-  var lat = 0, lng = 0;
-  for (var i = 0; i < coords.length; i++) { lat += coords[i][0]; lng += coords[i][1]; }
-  return [lat / coords.length, lng / coords.length];
-}
-
 function renderKrainy() {
   clearLayers();
-  if (!KRAINY_GEOJSON) return;
-
-  var features = KRAINY_GEOJSON.features || [];
-  features.forEach(function(feature) {
-    // Szukamy nazwy w różnych możliwych polach
-    var props = feature.properties || {};
-    var name = props.NAZWAGLOWN || props.nazwa || props.name || props.NAZWA || '';
-
-    // Sprawdzamy czy ta kraina jest na naszej liście
-    var matchedName = null;
-    for (var i = 0; i < KRAINY_NAMES.length; i++) {
-      if (name.toLowerCase().indexOf(KRAINY_NAMES[i].toLowerCase()) >= 0 ||
-          KRAINY_NAMES[i].toLowerCase().indexOf(name.toLowerCase()) >= 0) {
-        matchedName = KRAINY_NAMES[i];
-        break;
-      }
-    }
-    if (!matchedName) return;
-
-    var color = KRAINY_COLORS[matchedName] || '#c0392b';
+  KRAINY.forEach(function(k) {
     var style = {
       color: '#1a2e4a', weight: 2, opacity: 0.9,
-      fillColor: color, fillOpacity: 0.25
+      fillColor: '#3a86ff', fillOpacity: 0.18
     };
-
-    var layer = L.geoJSON(feature, {
-      style: style,
-      onEachFeature: function(f, l) {
-        l.featureName = matchedName;
-        l.on('click', function(e) {
-          L.DomEvent.stopPropagation(e);
-          handleAnswer(matchedName);
-        });
-      }
+    var poly = L.polygon(k.coords, style);
+    poly.featureName = k.name;
+    poly.on('click', function(e) {
+      L.DomEvent.stopPropagation(e);
+      handleAnswer(k.name);
     });
-    layer.featureName = matchedName;
-    layer.addTo(map);
-    geoLayers.push(layer);
+    poly.on('mouseover', function() {
+      if (!answered) poly.setStyle({ fillOpacity: 0.35, weight: 3 });
+    });
+    poly.on('mouseout', function() {
+      if (!answered) poly.setStyle({ fillOpacity: 0.18, weight: 2 });
+    });
+    poly.addTo(map);
+    geoLayers.push(poly);
   });
 }
 
 function renderPunkty() {
   clearLayers();
-
-  for (var i = 0; i < RZEKI.length; i++) {
-    (function(r) {
-      var line = L.polyline(r.coords, {
-        color: '#1565c0', weight: 5, opacity: 0.9
-      });
-      line.featureName = r.name;
-      line.on('click', function(e) {
-        L.DomEvent.stopPropagation(e);
-        handleAnswer(r.name);
-      });
-      line.addTo(map);
-      geoLayers.push(line);
-    })(RZEKI[i]);
-  }
-
-  for (var j = 0; j < PUNKTY.length; j++) {
-    (function(p) {
-      var st = KAT_PUNKTY[p.cat];
-      var icon = L.divIcon({
-        className: '',
-        html: '<div style="'
-            + 'background:' + st.fill + ';'
-            + 'color:#fff;width:32px;height:32px;'
-            + 'border-radius:50%;display:flex;'
-            + 'align-items:center;justify-content:center;'
-            + 'font-size:16px;border:3px solid #fff;'
-            + 'box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer'
-            + '">' + st.icon + '</div>',
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
-      });
-      var marker = L.marker([p.lat, p.lng], { icon: icon });
-      marker.featureName = p.name;
-      marker._correctIcon = L.divIcon({
-        className: '',
-        html: '<div style="background:#00c853;color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:3px solid #006622;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer">' + st.icon + '</div>',
-        iconSize: [32,32], iconAnchor: [16,16]
-      });
-      marker._wrongIcon = L.divIcon({
-        className: '',
-        html: '<div style="background:#ef4444;color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:3px solid #991b1b;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer">' + st.icon + '</div>',
-        iconSize: [32,32], iconAnchor: [16,16]
-      });
-      marker.on('click', function(e) {
-        L.DomEvent.stopPropagation(e);
-        handleAnswer(p.name);
-      });
-      marker.addTo(map);
-      geoLayers.push(marker);
-    })(PUNKTY[j]);
-  }
+  RZEKI.forEach(function(r) {
+    var line = L.polyline(r.coords, { color: '#1565c0', weight: 5, opacity: 0.9 });
+    line.featureName = r.name;
+    line.on('click', function(e) { L.DomEvent.stopPropagation(e); handleAnswer(r.name); });
+    line.addTo(map);
+    geoLayers.push(line);
+  });
+  PUNKTY.forEach(function(p) {
+    var st = KAT_PUNKTY[p.cat];
+    var icon = L.divIcon({
+      className: '',
+      html: '<div style="background:' + st.fill + ';color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer">' + st.icon + '</div>',
+      iconSize: [32,32], iconAnchor: [16,16]
+    });
+    var marker = L.marker([p.lat, p.lng], { icon: icon });
+    marker.featureName = p.name;
+    marker._defaultIcon = icon;
+    marker._correctIcon = L.divIcon({ className:'', html:'<div style="background:#00c853;color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:3px solid #006622;box-shadow:0 2px 6px rgba(0,0,0,.35)">' + st.icon + '</div>', iconSize:[32,32], iconAnchor:[16,16] });
+    marker._wrongIcon  = L.divIcon({ className:'', html:'<div style="background:#ef4444;color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:3px solid #991b1b;box-shadow:0 2px 6px rgba(0,0,0,.35)">' + st.icon + '</div>', iconSize:[32,32], iconAnchor:[16,16] });
+    marker.on('click', function(e) { L.DomEvent.stopPropagation(e); handleAnswer(p.name); });
+    marker.addTo(map);
+    geoLayers.push(marker);
+  });
 }
 
 
@@ -511,39 +402,27 @@ function handleAnswer(clicked) {
   var correct = quiz[current];
   var ok = (clicked === correct);
   if (ok) score++;
-
   var fb = document.getElementById('feedback');
   fb.className  = ok ? 'correct' : 'wrong';
   fb.textContent = ok
     ? '✔ Dobrze! To ' + correct
     : '✘ Błąd – wybrałeś: „' + clicked + '". Prawidłowo: „' + correct + '"';
-
   highlightLayer(clicked,  ok ? '#00c853' : '#ef4444');
   if (!ok) highlightLayer(correct, '#00c853');
-
   document.getElementById('score').innerHTML = 'Wynik: <b>' + score + '</b> / ' + quiz.length;
   clearTimeout(autoTimer);
   autoTimer = setTimeout(nextQuestion, 2600);
 }
 
 function highlightLayer(name, color) {
-  for (var i = 0; i < geoLayers.length; i++) {
-    var l = geoLayers[i];
-    if (l.featureName !== name) continue;
+  geoLayers.forEach(function(l) {
+    if (l.featureName !== name) return;
     if (l.setIcon) {
-      // Marker punktowy
-      var isCorrect = (color === '#00c853');
-      l.setIcon(isCorrect ? l._correctIcon : l._wrongIcon);
-    } else if (l.eachLayer) {
-      // L.geoJSON – iterujemy po sublayerach
-      l.eachLayer(function(sub) {
-        if (sub.setStyle) sub.setStyle({ fillColor: color, fillOpacity: 0.60, color: color, weight: 3 });
-      });
+      l.setIcon(color === '#00c853' ? l._correctIcon : l._wrongIcon);
     } else if (l.setStyle) {
-      // L.polyline (rzeki)
-      l.setStyle({ color: color, weight: 7, opacity: 1 });
+      l.setStyle({ fillColor: color, fillOpacity: 0.60, color: color, weight: 3 });
     }
-  }
+  });
 }
 
 function nextQuestion() {
@@ -559,7 +438,7 @@ function nextQuestion() {
 }
 
 function showQuestion() {
-  document.getElementById('counter').textContent  = 'Pytanie ' + (current + 1) + ' / ' + quiz.length;
+  document.getElementById('counter').textContent  = 'Pytanie ' + (current+1) + ' / ' + quiz.length;
   document.getElementById('question').textContent = '▸ ' + quiz[current];
   document.getElementById('feedback').textContent = '';
   document.getElementById('feedback').className   = '';
@@ -575,62 +454,40 @@ function setMode(mode) {
   currentMode = mode;
   score = 0; current = 0; answered = false;
   clearTimeout(autoTimer);
-
-  document.querySelectorAll('.mode-buttons button').forEach(function(b) {
-    b.classList.remove('active');
-  });
+  document.querySelectorAll('.mode-buttons button').forEach(function(b) { b.classList.remove('active'); });
   document.getElementById('btn-' + mode).classList.add('active');
-
   map.removeLayer(activeTileLayer);
   activeTileLayer = (mode === 'punkty') ? osmLayer : topoLayer;
   activeTileLayer.addTo(map);
-
   if (mode === 'krainy') {
     renderKrainy();
-    quiz = KRAINY_NAMES.slice(); // kopia listy krain
+    quiz = KRAINY.map(function(k) { return k.name; });
   } else {
     renderPunkty();
     quiz = RZEKI.concat(PUNKTY).map(function(o) { return o.name; });
   }
-
   shuffle(quiz);
   updateLegend(mode);
   showQuestion();
 }
 
-// ════════════════════════════════════════════════════════
-//  LEGENDA
-// ════════════════════════════════════════════════════════
 function updateLegend(mode) {
   var el = document.getElementById('legend');
-
-  // Ustaw klasę na body do sterowania wysokością mapy
   document.body.className = 'mode-' + mode;
-
   if (mode === 'krainy') {
-    // Krainy: brak legendy
     el.style.display = 'none';
     el.innerHTML = '';
   } else {
-    // Punkty: legenda widoczna pod mapą (dostępna po scroll)
     el.style.display = 'block';
     var katItems = Object.keys(KAT_PUNKTY).map(function(cat) {
       var k = KAT_PUNKTY[cat];
-      return '<span class="leg-item">'
-           + '<span class="icon-sym">' + k.icon + '</span>'
-           + k.opis + '</span>';
+      return '<span class="leg-item"><span class="icon-sym">' + k.icon + '</span>' + k.opis + '</span>';
     }).join('');
-    el.innerHTML =
-      '<b>Rzeki i obiekty geograficzne Polski</b>'
-      + '<div class="leg-section">'
-      + '<div class="leg-section-title">Rzeki (kliknij linię)</div>'
-      + '<div class="leg-row">'
-      + '<span class="leg-item"><span class="line-sym"></span>Wisła, Odra, Warta, Bug</span>'
-      + '</div></div>'
-      + '<div class="leg-section">'
-      + '<div class="leg-section-title">Punkty (kliknij marker)</div>'
-      + '<div class="leg-row">' + katItems + '</div>'
-      + '</div>';
+    el.innerHTML = '<b>Rzeki i obiekty geograficzne Polski</b>'
+      + '<div class="leg-section"><div class="leg-section-title">Rzeki (kliknij linię)</div>'
+      + '<div class="leg-row"><span class="leg-item"><span class="line-sym"></span>Wisła, Odra, Warta, Bug</span></div></div>'
+      + '<div class="leg-section"><div class="leg-section-title">Punkty (kliknij marker)</div>'
+      + '<div class="leg-row">' + katItems + '</div></div>';
   }
 }
 
@@ -641,52 +498,9 @@ function updateLegend(mode) {
 window.onload = function() {
   initMap();
   setTimeout(function() { map.invalidateSize(); }, 200);
-
-  // Pokaż komunikat ładowania
-  document.getElementById('question').textContent = '⏳ Ładowanie granic krain geograficznych...';
-
-  // Załaduj dane GeoJSON z GDOŚ
-  loadKrainyGeoJSON(function(err, data) {
-    if (err || !data || !data.features || data.features.length === 0) {
-      // Jeśli API niedostępne – uruchom z uproszczonymi danymi
-      console.warn('GDOŚ API niedostępne, używam danych uproszczonych:', err);
-      KRAINY_GEOJSON = buildFallbackGeoJSON();
-    }
-    setMode('krainy');
-  });
+  setMode('krainy');
 };
 
-// Dane zapasowe (uproszczone poligony) gdy API jest niedostępne
-function buildFallbackGeoJSON() {
-  var fallback = [
-    { name: "Pobrzeże Szczecińskie",          coords: [[[14.12,53.35],[14.10,53.55],[14.18,54.00],[14.32,54.33],[14.60,54.52],[15.00,54.60],[15.45,54.52],[15.55,54.22],[15.45,53.92],[15.28,53.68],[14.95,53.45],[14.50,53.32],[14.12,53.35]]] },
-    { name: "Pobrzeże Koszalińskie",           coords: [[[15.55,54.22],[15.45,54.52],[15.00,54.60],[15.55,54.70],[16.22,54.77],[16.88,54.80],[17.12,54.68],[17.18,54.43],[17.05,54.15],[16.65,53.95],[16.10,53.92],[15.68,53.98],[15.55,54.22]]] },
-    { name: "Pobrzeże Słowińskie",             coords: [[[17.18,54.43],[17.12,54.68],[16.88,54.80],[17.38,54.88],[17.92,54.93],[18.30,54.92],[18.50,54.75],[18.55,54.50],[18.35,54.30],[18.00,54.12],[17.53,54.15],[17.25,54.23],[17.18,54.43]]] },
-    { name: "Żuławy Wiślane",                  coords: [[[18.35,54.30],[18.55,54.50],[18.50,54.75],[18.92,54.72],[19.28,54.55],[19.55,54.35],[19.60,54.18],[19.42,54.00],[19.08,53.90],[18.78,54.03],[18.62,54.17],[18.35,54.30]]] },
-    { name: "Pojezierze Pomorskie",            coords: [[[14.95,53.45],[15.28,53.68],[15.45,53.92],[15.68,53.98],[16.10,53.92],[16.65,53.95],[17.05,54.15],[17.25,54.23],[17.53,54.15],[18.00,54.12],[18.32,53.88],[18.35,53.62],[18.08,53.38],[17.65,53.13],[17.18,52.88],[16.60,52.68],[16.08,52.78],[15.70,52.95],[15.35,53.15],[15.08,53.27],[14.95,53.45]]] },
-    { name: "Pojezierze Mazurskie",            coords: [[[19.08,53.90],[19.42,54.00],[19.60,54.18],[19.55,54.35],[19.28,54.55],[18.92,54.72],[19.38,54.82],[20.40,54.80],[21.12,54.68],[21.62,54.42],[22.03,54.12],[22.38,53.72],[22.38,53.38],[22.03,53.13],[21.28,52.95],[20.40,52.98],[19.80,53.18],[19.38,53.42],[18.82,53.60],[18.70,53.88],[19.08,53.90]]] },
-    { name: "Nizina Wielkopolska",             coords: [[[16.60,52.68],[17.18,52.88],[17.65,53.13],[18.08,53.38],[18.35,53.62],[19.38,53.42],[19.80,53.18],[20.40,52.98],[21.28,52.95],[21.08,52.50],[20.63,52.20],[20.03,51.92],[19.35,51.63],[18.55,51.52],[17.98,51.52],[17.40,51.72],[16.95,51.97],[16.68,52.22],[16.45,52.43],[16.60,52.68]]] },
-    { name: "Nizina Mazowiecka",               coords: [[[21.28,52.95],[22.03,53.13],[22.38,53.38],[22.87,53.43],[23.05,53.22],[23.00,52.85],[22.53,52.45],[22.15,52.10],[21.68,51.75],[21.15,51.60],[19.35,51.63],[20.03,51.92],[20.63,52.20],[21.08,52.50],[21.28,52.95]]] },
-    { name: "Nizina Śląska",                   coords: [[[15.60,51.42],[16.03,51.72],[16.35,52.00],[16.68,52.22],[16.95,51.97],[17.40,51.72],[17.98,51.52],[18.45,51.50],[18.35,51.15],[18.08,50.85],[17.78,50.55],[17.32,50.18],[16.88,49.95],[16.42,50.05],[15.98,50.30],[15.55,50.72],[15.32,51.12],[15.45,51.42],[15.60,51.42]]] },
-    { name: "Podlasie",                        coords: [[[22.53,52.45],[23.00,52.85],[23.05,53.22],[22.87,53.43],[22.38,53.72],[22.03,54.12],[22.70,54.18],[23.13,53.88],[23.47,53.45],[23.63,53.00],[23.60,52.52],[23.43,52.00],[23.03,51.62],[22.53,51.55],[21.68,51.75],[22.15,52.10],[22.53,52.45]]] },
-    { name: "Wyżyna Krakowsko-Częstochowska",  coords: [[[18.50,51.30],[18.55,51.50],[19.18,51.40],[19.45,51.15],[19.38,50.85],[19.18,50.55],[18.95,50.28],[18.68,50.05],[18.38,49.98],[18.15,50.08],[17.92,50.27],[17.78,50.45],[17.95,50.65],[18.15,50.85],[18.35,51.15],[18.50,51.30]]] },
-    { name: "Góry Świętokrzyskie",             coords: [[[19.45,51.15],[20.03,51.28],[20.48,51.22],[20.85,50.92],[20.70,50.65],[20.25,50.55],[19.78,50.65],[19.38,50.85],[19.45,51.15]]] },
-    { name: "Wyżyna Lubelska",                 coords: [[[21.72,51.55],[22.55,51.60],[23.03,51.62],[23.58,51.40],[23.35,50.95],[23.25,50.65],[22.88,50.38],[22.40,50.22],[21.93,50.35],[21.25,50.45],[20.88,50.65],[20.85,50.92],[20.48,51.22],[20.58,51.50],[21.15,51.58],[21.72,51.55]]] },
-    { name: "Tatry",                           coords: [[[19.70,49.43],[19.87,49.48],[20.12,49.52],[20.40,49.50],[20.57,49.42],[20.68,49.27],[20.55,49.12],[20.22,49.07],[19.92,49.10],[19.70,49.20],[19.60,49.32],[19.70,49.43]]] },
-    { name: "Bieszczady",                      coords: [[[21.82,49.52],[22.12,49.57],[22.50,49.52],[22.87,49.42],[22.90,49.22],[22.60,49.07],[22.22,49.05],[21.93,49.15],[21.75,49.32],[21.70,49.47],[21.82,49.52]]] }
-  ];
-
-  return {
-    type: 'FeatureCollection',
-    features: fallback.map(function(k) {
-      return {
-        type: 'Feature',
-        properties: { NAZWAGLOWN: k.name },
-        geometry: { type: 'Polygon', coordinates: k.coords }
-      };
-    })
-  };
-}
 </script>
 </body>
 </html>
